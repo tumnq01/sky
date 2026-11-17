@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="출근길 하늘" />
-  <title>출근길 하늘 v0.7</title>
+  <title>출근길 하늘 v0.8</title>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <style>
 :root {
@@ -252,6 +252,8 @@ small { font-size: 12px; color: var(--muted); }
 
       <div class="banner" id="mockBanner" hidden>
         ⚠️ 실시간 데이터 연결에 실패해 <b>데모 데이터</b>를 보여주고 있어요.
+        <small id="mockWhy" style="display:block;margin-top:2px"></small>
+        <button id="retryBtn" style="margin-top:6px;border:0;border-radius:10px;padding:7px 12px;font-weight:600;color:#fff;background:var(--accent)">다시 시도</button>
       </div>
 
       <div class="favs" id="favs" data-tab="route" hidden></div>
@@ -331,7 +333,7 @@ small { font-size: 12px; color: var(--muted); }
       </section>
 
       <footer class="src">
-        날씨·대기질: Open-Meteo · 검색: OpenStreetMap Nominatim / Photon · 경로: OSRM · 지도: OpenFreeMap · v0.7
+        날씨·대기질: Open-Meteo · 검색: OpenStreetMap Nominatim / Photon · 경로: OSRM · 지도: OpenFreeMap · v0.8
       </footer>
     </aside>
   </div>
@@ -463,22 +465,43 @@ const pmBadge = (lvl) => lvl == null ? '<span class="pm">❔</span>' : `<span cl
 const r0 = (v) => (v == null || isNaN(v) ? '-' : Math.round(v));
 
 /* ------------------------------------------------------------------ 데이터: 날씨 + 대기질 */
+function whyFailed(e) {
+  if (!e) return '알 수 없음';
+  if (e.name === 'AbortError') return '응답 시간 초과';
+  if (/HTTP 429/.test(e.message)) return '요청이 너무 많음 (HTTP 429)';
+  if (/HTTP/.test(e.message)) return '서버 오류 (' + e.message + ')';
+  if (/fetch|network|load/i.test(e.message)) return '날씨 서버에 연결하지 못함 (네트워크 차단 가능)';
+  return e.message;
+}
+
 async function fetchWeather(points) {
   const lat = points.map((p) => p.lat.toFixed(4)).join(',');
   const lon = points.map((p) => p.lon.toFixed(4)).join(',');
   const common = `latitude=${lat}&longitude=${lon}&timezone=${encodeURIComponent(TZ)}&forecast_days=4&past_days=1`;
+  const wxUrl = `https://api.open-meteo.com/v1/forecast?${common}&wind_speed_unit=ms` +
+    '&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day' +
+    '&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,is_day';
+  // 대기질은 따로 받는다: 실패해도 날씨는 실제 값으로 보여주고 미세먼지만 "정보 없음"
+  const airP = getJSON(`https://air-quality-api.open-meteo.com/v1/air-quality?${common}&current=pm10,pm2_5&hourly=pm10,pm2_5`, 15000)
+    .catch((e) => { console.warn('대기질 API 실패', e); return null; });
+  let w = null, err = null;
+  for (let attempt = 0; attempt < 2 && !w; attempt++) { // 한 번 실패하면 잠깐 쉬고 다시 시도
+    try { w = await getJSON(wxUrl, 15000); } catch (e) { err = e; if (attempt === 0) await sleep(800); }
+  }
+  if (!w) {
+    console.warn('날씨 API 실패 → 데모 데이터', err);
+    setMock(true, whyFailed(err));
+    return points.map(mockWeather);
+  }
   try {
-    const [w, a] = await Promise.all([
-      getJSON(`https://api.open-meteo.com/v1/forecast?${common}&wind_speed_unit=ms` +
-        '&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day' +
-        '&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,is_day'),
-      getJSON(`https://air-quality-api.open-meteo.com/v1/air-quality?${common}&current=pm10,pm2_5&hourly=pm10,pm2_5`),
-    ]);
-    const W = Array.isArray(w) ? w : [w], A = Array.isArray(a) ? a : [a];
-    return points.map((_, i) => normalize(W[i], A[i]));
+    const a = await airP;
+    const W = Array.isArray(w) ? w : [w], A = a ? (Array.isArray(a) ? a : [a]) : [];
+    const out = points.map((_, i) => normalize(W[i], A[i]));
+    setMock(false);
+    return out;
   } catch (e) {
-    console.warn('날씨 API 실패 → 데모 데이터', e);
-    setMock(true);
+    console.warn('날씨 자료 해석 실패 → 데모 데이터', e);
+    setMock(true, '자료 해석 오류: ' + e.message);
     return points.map(mockWeather);
   }
 }
@@ -519,7 +542,7 @@ function mockWeather(p) {
   return { current: { ...hourly[25] }, hourly };
 }
 
-function setMock(on) { state.mock = on; $('#mockBanner').hidden = !on; }
+function setMock(on, why) { state.mock = on; $('#mockBanner').hidden = !on; if (on) $('#mockWhy').textContent = why ? `원인: ${why}` : ''; }
 
 // 특정 시각의 날씨 스냅샷 (45분 이내면 실황, 아니면 시간별 예보)
 function snapshot(wx, date) {
@@ -543,7 +566,7 @@ function cleanAddr(q) {
 // Nominatim: Enter/버튼으로 검색할 때만 사용 (정책상 자동완성 금지)
 async function nominatim(q) {
   const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=kr&accept-language=ko&addressdetails=1&limit=8&q=${encodeURIComponent(q)}`;
-  const rows = await getJSON(url);
+  const rows = await getJSON(url, 6000);
   return rows.map((r) => {
     const a = r.address || {};
     const road = [a.road, a.house_number].filter(Boolean).join(' ');
@@ -573,27 +596,39 @@ async function searchPlaces(q) {
   for (let cut = 0; cut <= Math.min(2, tokens.length - 1); cut++) {
     const qq = tokens.slice(0, tokens.length - cut).join(' ');
     if (cut) await sleep(1100); // Nominatim 정책: 1초에 1건
-    let rows = await nominatim(qq).catch(() => []);
-    if (!rows.length) rows = await photon(qq).catch(() => []);
+    const nP = nominatim(qq).catch(() => []), p = await photon(qq).catch(() => []);
+    const n = await Promise.race([nP, sleep(p.length ? 2500 : 6000).then(() => [])]); // Nominatim 이 느리면 기다리지 않는다
+    const rows = [...n, ...p.filter((x) => !n.some((y) => Math.abs(y.lat - x.lat) < 1e-4 && Math.abs(y.lon - x.lon) < 1e-4))].slice(0, 8);
     if (rows.length) return cut ? rows.map((r) => ({ ...r, approx: true, sub: '📍 근처 위치 · ' + r.sub })) : rows;
   }
   return [];
 }
 
 // 지도에서 찍은 지점의 주소
-async function reverseAddr(p) {
-  const j = await getJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=ko&zoom=18&lat=${p.lat}&lon=${p.lon}`);
-  const a = j.address || {};
-  return [a.city || a.county || a.town, a.borough || a.city_district, a.suburb || a.quarter || a.neighbourhood || a.village, a.road, a.house_number]
-    .filter((x, i, arr) => x && arr.indexOf(x) === i).join(' ') || null;
+async function photonReverse(p) {
+  const j = await getJSON(`https://photon.komoot.io/reverse?lang=default&lon=${p.lon}&lat=${p.lat}`, 6000);
+  return j.features?.[0]?.properties || {};
 }
-
+const uniq = (arr) => arr.filter((x, i) => x && arr.indexOf(x) === i).join(' ') || null;
+async function reverseAddr(p) {
+  try {
+    const j = await getJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=ko&zoom=18&lat=${p.lat}&lon=${p.lon}`, 5000);
+    const a = j.address || {};
+    const r = uniq([a.city || a.county || a.town, a.borough || a.city_district, a.suburb || a.quarter || a.neighbourhood || a.village, a.road, a.house_number]);
+    if (r) return r;
+  } catch (e) { /* 아래 Photon 으로 */ }
+  const q = await photonReverse(p);
+  return uniq([q.city || q.county, q.district || q.locality, q.street || q.name, q.housenumber]);
+}
 async function reverseLabel(p) {
-  const j = await getJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=ko&zoom=16&lat=${p.lat}&lon=${p.lon}`);
-  const a = j.address || {};
-  const big = a.borough || a.city_district || a.county || a.city || a.town;
-  const small = a.suburb || a.quarter || a.neighbourhood || a.village;
-  return [big, small].filter(Boolean).join(' ') || null;
+  try {
+    const j = await getJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=ko&zoom=16&lat=${p.lat}&lon=${p.lon}`, 5000);
+    const a = j.address || {};
+    const r = uniq([a.borough || a.city_district || a.county || a.city || a.town, a.suburb || a.quarter || a.neighbourhood || a.village]);
+    if (r) return r;
+  } catch (e) { /* 아래 Photon 으로 */ }
+  const q = await photonReverse(p);
+  return uniq([q.city || q.county, q.district || q.locality]);
 }
 
 async function fetchRoute(from, to) {
@@ -1269,6 +1304,7 @@ function renderFavs() {
   });
 }
 function applyFav(f) {
+  if (busy()) return;
   setTrip('go'); setDepart('now');
   state.from = { ...f.from }; state.to = { ...f.to };
   $('#fromInput').value = f.from.name; $('#toInput').value = f.to.name;
@@ -1296,7 +1332,9 @@ function setDepart(mode, time) {
   $('#departTime').hidden = mode === 'now';
   if (time) $('#departTime').value = time;
 }
+const busy = () => $('#goBtn').disabled && (toast('날씨를 살피는 중이에요. 잠시만요 🌀'), true);
 function toggleReturn() {
+  if (busy()) return;
   if (!$('#fromInput').value.trim() || !$('#toInput').value.trim()) return toast('출발지와 도착지를 먼저 입력해 주세요');
   $('#swapBtn').click(); // 출발 ↔ 도착 뒤집기
   if (state.trip === 'back') { setTrip('go'); setDepart('now'); } else { setTrip('back'); setDepart('time', '18:00'); }
@@ -1308,6 +1346,12 @@ function setupUI() {
   $('#goBtn').addEventListener('click', findRoute);
   $('#returnBtn').addEventListener('click', toggleReturn);
   $('#favSaveBtn').addEventListener('click', saveFav);
+  $('#retryBtn').addEventListener('click', async () => {
+    $('#retryBtn').disabled = true; $('#mockWhy').textContent = '다시 불러오는 중…';
+    await loadCities();
+    if (state.routeActive && state.lastRoute) await findRoute();
+    $('#retryBtn').disabled = false;
+  });
   $('#detail').addEventListener('click', onDetailClick);
   $('#extras').innerHTML = LIFE_EMPTY;
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) setTab(b.dataset.go); });
