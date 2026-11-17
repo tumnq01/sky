@@ -8,8 +8,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="모닝카드">
-<meta name="app-version" content="0.2">
-<title>출근 모닝 카드 v0.2</title>
+<meta name="app-version" content="0.4">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,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">
+<title>출근 모닝 카드 v0.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@200;400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
@@ -455,6 +458,48 @@ table.ot{border-collapse:separate;border-spacing:0;width:100%;color:#222;}
   .c-sum{margin:12px 10px 0;}
   .c-hero-title{font-size:21px;}
 }
+/* v0.3: 여행 날짜 버튼 + 한 화면 기간 선택 달력 */
+.o-date-btn{display:flex;align-items:center;gap:6px;text-align:left;cursor:pointer;padding:11px 12px!important;font-size:14px!important;font-weight:600;white-space:nowrap;overflow:hidden;min-width:0;}
+.o-date-btn .v{overflow:hidden;text-overflow:ellipsis;}
+@media(max-width:380px){.o-date-btn .ic{display:none;}.o-date-btn{font-size:13px!important;padding:10px!important;}}
+.o-date-btn .ph{color:#9a9a9a;font-weight:500;}
+.o-date-btn.on{border-color:#222;box-shadow:0 0 0 2px rgba(34,34,34,.1);}
+.o-dates .o-field{min-width:0;}
+.dp-back{position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.45);display:flex;align-items:flex-end;justify-content:center;animation:dpFade .2s ease;}
+.dp-back[hidden]{display:none;}
+@keyframes dpFade{from{opacity:0}to{opacity:1}}
+@keyframes dpUp{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+.dp-sheet{width:100%;max-width:460px;background:#fff;border-radius:24px 24px 0 0;padding:18px 18px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.25);animation:dpUp .25s ease;color:#222;font-family:inherit;}
+.dp-grip{width:40px;height:4px;border-radius:4px;background:#ddd;margin:-6px auto 12px;}
+.dp-sel{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.dp-sel button{border:1.5px solid #ddd;background:#fff;border-radius:12px;padding:8px 12px;text-align:left;font:inherit;cursor:pointer;min-width:0;}
+.dp-sel button small{display:block;font-size:10px;font-weight:800;letter-spacing:1px;color:#717171;}
+.dp-sel button b{display:block;font-size:14px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dp-sel button.on{border-color:#FF385C;box-shadow:0 0 0 2px rgba(255,56,92,.15);}
+.dp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.dp-head b{font-size:16px;}
+.dp-nav{width:34px;height:34px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:16px;cursor:pointer;color:#222;}
+.dp-nav:disabled{opacity:.3;cursor:default;}
+.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px;}
+.dp-wd{text-align:center;font-size:11px;font-weight:700;color:#717171;padding:4px 0 6px;}
+.dp-wd.sun{color:#e11d48;}.dp-wd.sat{color:#2563eb;}
+.dp-d{position:relative;height:40px;border:0;background:none;font:inherit;font-size:14px;font-weight:600;color:#222;cursor:pointer;padding:0;}
+.dp-d span{position:relative;z-index:1;display:inline-flex;width:36px;height:36px;border-radius:50%;align-items:center;justify-content:center;}
+@media(hover:hover){.dp-d:hover:not(:disabled) span{outline:1.5px solid #222;}}
+.dp-d:disabled{color:#ccc;cursor:default;text-decoration:line-through;}
+.dp-d.today span{box-shadow:inset 0 0 0 1.5px #FF385C;}
+.dp-d.in::before{content:"";position:absolute;left:0;right:0;top:2px;bottom:2px;background:#ffe4ea;}
+.dp-d.s::before{content:"";position:absolute;left:50%;right:0;top:2px;bottom:2px;background:#ffe4ea;}
+.dp-d.e::before{content:"";position:absolute;left:0;right:50%;top:2px;bottom:2px;background:#ffe4ea;}
+.dp-d.s.e::before{display:none;}
+.dp-d.s span,.dp-d.e span{background:#FF385C;color:#fff;}
+.dp-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid #eee;}
+.dp-info{font-size:13px;color:#555;flex:1;min-width:0;}
+.dp-info b{color:#222;}
+.dp-reset{border:0;background:none;font:inherit;font-size:13px;font-weight:700;text-decoration:underline;color:#222;cursor:pointer;padding:8px 4px;}
+.dp-done{border:0;border-radius:12px;padding:11px 20px;font:inherit;font-size:15px;font-weight:700;color:#fff;background:linear-gradient(to right,#E61E4D,#D70466);cursor:pointer;}
+.dp-done:disabled{opacity:.4;cursor:default;}
+@media(min-width:700px){.dp-back{align-items:center;}.dp-sheet{border-radius:24px;}}
 </style>
 </head>
 <body>
@@ -589,11 +634,13 @@ table.ot{border-collapse:separate;border-spacing:0;width:100%;color:#222;}
           <div class="o-dates">
             <div class="o-field">
               <div class="o-field-label">체크인</div>
-              <input class="o-field-input" id="oStart" type="date" style="padding-left:14px">
+              <button class="o-field-input o-date-btn" id="oStartBtn" type="button"><span class="ic">📅</span><span class="v"></span></button>
+              <input id="oStart" type="hidden">
             </div>
             <div class="o-field">
               <div class="o-field-label">체크아웃</div>
-              <input class="o-field-input" id="oEnd" type="date" style="padding-left:14px">
+              <button class="o-field-input o-date-btn" id="oEndBtn" type="button"><span class="ic">📅</span><span class="v"></span></button>
+              <input id="oEnd" type="hidden">
             </div>
           </div>
           <button class="o-search-btn" id="oBtn" type="button">옷차림 추천받기</button>
@@ -649,7 +696,7 @@ table.ot{border-collapse:separate;border-spacing:0;width:100%;color:#222;}
     </div>
     <button class="arrow" id="next" aria-label="다음">›</button>
   </div>
-  <div class="ver">출근 모닝 카드 · v0.2</div>
+  <div class="ver">출근 모닝 카드 · v0.4</div>
 </div>
 <div class="scroll-ind" id="scrollInd" aria-hidden="true"><i></i></div>
 
@@ -687,8 +734,23 @@ $('next').addEventListener('click',function(){goTo(cur+1);});
 dots.forEach(function(d){d.addEventListener('click',function(){goTo(+d.dataset.i);});});
 // Touch swipe
 var sx=0,moving=false;
-$('carousel').addEventListener('touchstart',function(e){sx=e.touches[0].clientX;moving=true;},{passive:true});
-$('carousel').addEventListener('touchend',function(e){if(!moving)return;moving=false;var dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>50){dx<0?goTo(cur+1):goTo(cur-1);}},{passive:true});
+// v0.3: 세로 스크롤 중 손가락이 옆으로 살짝 움직여도 카드가 넘어가지 않도록
+// 가로 이동이 충분히 크고(70px↑), 세로보다 2배 이상 크고, 그동안 화면이 스크롤되지 않았을 때만 넘긴다
+var sy=0,st0=0,sScroll=0;
+// 가로로 스크롤되는 영역(표·시간별 목록 등) 안에서 시작한 터치는 카드 넘김에 쓰지 않음
+function inHScroll(el){for(;el&&el!==document.body;el=el.parentElement){if(el.scrollWidth>el.clientWidth+2){var o=getComputedStyle(el).overflowX;if(o==='auto'||o==='scroll')return true;}}return false;}
+$('carousel').addEventListener('touchstart',function(e){
+  if(e.touches.length>1||e.target.closest('input,textarea,select,.c-map,[data-noswipe]')||inHScroll(e.target)){moving=false;return;}
+  sx=e.touches[0].clientX;sy=e.touches[0].clientY;st0=Date.now();sScroll=window.scrollY;moving=true;},{passive:true});
+$('carousel').addEventListener('touchmove',function(e){
+  if(!moving)return;var dy=Math.abs(e.touches[0].clientY-sy),dx=Math.abs(e.touches[0].clientX-sx);
+  if(dy>12&&dy>dx)moving=false;},{passive:true});
+$('carousel').addEventListener('touchcancel',function(){moving=false;},{passive:true});
+$('carousel').addEventListener('touchend',function(e){
+  if(!moving)return;moving=false;
+  var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+  if(Math.abs(window.scrollY-sScroll)>4||Date.now()-st0>800)return;
+  if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*2){dx<0?goTo(cur+1):goTo(cur-1);}},{passive:true});
 goTo(0);
 
 // ======== WMO ========
@@ -1123,8 +1185,8 @@ function renderTripTable(place,days,s,e){
 
 function renderClothingDefault(d){
   $('oPlace').textContent=d.place.name;$('oDate').textContent=$('wDate').textContent;
-  var today=new Date();$('oStart').value=today.toISOString().slice(0,10);
-  var end=new Date(today);end.setDate(end.getDate()+3);$('oEnd').value=end.toISOString().slice(0,10);
+  var today=new Date();$('oStart').value=ymd(today);
+  var end=new Date(today);end.setDate(end.getDate()+3);$('oEnd').value=ymd(end);if(window.dpSync)window.dpSync();
   $('oSource').textContent='여행지와 날짜를 입력하면 그곳 날씨로 코디표를 만들어요';
   $('oCity').value=d.place.name;
   var hs=document.querySelector('#slideClothing .o-hero-title'),hb=document.querySelector('#slideClothing .o-hero-sub');
@@ -1579,6 +1641,102 @@ loadPlace(start);
   window.addEventListener('resize',req);
   if(window.ResizeObserver)new ResizeObserver(req).observe(document.body);
   req();
+})();
+</script>
+<div class="dp-back" id="dpBack" hidden role="dialog" aria-label="여행 날짜 선택"><div class="dp-sheet"></div></div>
+<script>
+// v0.3: 여행 체크인/체크아웃을 한 화면에서 고르는 기간 달력
+(function(){
+  var MAX_DAYS=14; // 추천표는 최대 14일까지
+  var WD=['일','월','화','수','목','금','토'];
+  function g(id){return document.getElementById(id);}
+  function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function parse(s){if(!s)return null;var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+  function fmt(d){return d?(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+WD[d.getDay()]+')':'';}
+  function same(a,b){return a&&b&&a.getTime()===b.getTime();}
+  function today(){var t=new Date();t.setHours(0,0,0,0);return t;}
+  function addDays(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x;}
+
+  var inS=g('oStart'),inE=g('oEnd'),bS=g('oStartBtn'),bE=g('oEndBtn'),back=g('dpBack');
+  var st={s:null,e:null,phase:'start',view:null};
+
+  // 화면의 체크인/체크아웃 버튼 표시를 숨은 값과 맞춘다
+  function sync(){
+    var s=parse(inS.value),e=parse(inE.value);
+    bS.querySelector('.v').innerHTML=s?fmt(s):'<span class="ph">날짜 선택</span>';
+    bE.querySelector('.v').innerHTML=e?fmt(e):'<span class="ph">날짜 선택</span>';
+  }
+  window.dpSync=sync;
+
+  function open(phase){
+    st.s=parse(inS.value);st.e=parse(inE.value);
+    if(st.s&&st.s<today()){st.s=null;st.e=null;}
+    st.phase=(phase==='end'&&st.s)?'end':'start';
+    var base=(st.phase==='end'&&st.e)?st.e:(st.s||today());
+    st.view=new Date(base.getFullYear(),base.getMonth(),1);
+    bS.classList.toggle('on',st.phase==='start');bE.classList.toggle('on',st.phase==='end');
+    back.hidden=false;document.body.style.overflow='hidden';
+    render();
+  }
+  function close(){back.hidden=true;document.body.style.overflow='';bS.classList.remove('on');bE.classList.remove('on');}
+
+  function pick(d){
+    if(st.phase==='start'||st.phase==='done'||!st.s||d<st.s){
+      st.s=d;if(st.e&&(st.e<d||(st.e-d)/864e5>=MAX_DAYS))st.e=null;
+      st.phase='end';
+    }else{
+      if((d-st.s)/864e5>=MAX_DAYS){d=addDays(st.s,MAX_DAYS-1);st.note='최대 '+MAX_DAYS+'일까지 추천할 수 있어 '+fmt(d)+'로 맞췄어요';}
+      st.e=d;st.phase='done';
+    }
+    render();
+  }
+
+  function render(){
+    var t=today(),v=st.view,y=v.getFullYear(),m=v.getMonth();
+    var first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
+    var limit=addDays(t,365);
+    var h='<div class="dp-grip"></div>'+
+      '<div class="dp-sel"><button type="button" data-ph="start" class="'+(st.phase==='start'?'on':'')+'"><small>체크인</small><b>'+(st.s?fmt(st.s):'날짜 선택')+'</b></button>'+
+      '<button type="button" data-ph="end" class="'+(st.phase==='end'?'on':'')+'"><small>체크아웃</small><b>'+(st.e?fmt(st.e):'날짜 선택')+'</b></button></div>'+
+      '<div class="dp-head"><button type="button" class="dp-nav" data-mv="-1" aria-label="이전 달"'+(y===t.getFullYear()&&m===t.getMonth()?' disabled':'')+'>‹</button>'+
+      '<b>'+y+'년 '+(m+1)+'월</b><button type="button" class="dp-nav" data-mv="1" aria-label="다음 달"'+(new Date(y,m+1,1)>limit?' disabled':'')+'>›</button></div>'+
+      '<div class="dp-grid">'+WD.map(function(w,i){return '<div class="dp-wd'+(i===0?' sun':i===6?' sat':'')+'">'+w+'</div>';}).join('');
+    for(var i=0;i<first;i++)h+='<div></div>';
+    for(var dd=1;dd<=days;dd++){
+      var d=new Date(y,m,dd),cls=['dp-d'];
+      if(same(d,t))cls.push('today');
+      if(same(d,st.s))cls.push('s');
+      if(same(d,st.e))cls.push('e');
+      if(st.s&&st.e&&d>st.s&&d<st.e)cls.push('in');
+      h+='<button type="button" class="'+cls.join(' ')+'" data-d="'+ymd(d)+'"'+(d<t||d>limit?' disabled':'')+'><span>'+dd+'</span></button>';
+    }
+    h+='</div>';
+    var info;
+    if(st.note){info=st.note;st.note='';}
+    else if(st.s&&st.e){var n=Math.round((st.e-st.s)/864e5);info=n?'<b>'+n+'박 '+(n+1)+'일</b> 일정이에요':'<b>당일</b> 일정이에요';}
+    else if(st.s)info='체크아웃 날짜를 선택해 주세요';
+    else info='체크인 날짜를 선택해 주세요';
+    h+='<div class="dp-foot"><div class="dp-info">'+info+'</div><button type="button" class="dp-reset">초기화</button><button type="button" class="dp-done"'+(st.s?'':' disabled')+'>완료</button></div>';
+    back.firstElementChild.innerHTML=h;
+  }
+
+  back.addEventListener('click',function(ev){
+    if(ev.target===back)return close();
+    var b=ev.target.closest('button');if(!b||b.disabled)return;
+    if(b.dataset.d)return pick(parse(b.dataset.d));
+    if(b.dataset.mv){st.view=new Date(st.view.getFullYear(),st.view.getMonth()+(+b.dataset.mv),1);return render();}
+    if(b.dataset.ph){if(b.dataset.ph==='end'&&!st.s)return;st.phase=b.dataset.ph;return render();}
+    if(b.classList.contains('dp-reset')){st.s=null;st.e=null;st.phase='start';return render();}
+    if(b.classList.contains('dp-done')){
+      if(!st.s)return;
+      inS.value=ymd(st.s);inE.value=ymd(st.e||st.s);
+      sync();close();
+    }
+  });
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!back.hidden)close();});
+  bS.addEventListener('click',function(){open('start');});
+  bE.addEventListener('click',function(){open('end');});
+  sync();
 })();
 </script>
 </body>
