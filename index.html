@@ -1,0 +1,1347 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f2f2f7" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="출근길 하늘" />
+  <title>출근길 하늘 v0.7</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <style>
+:root {
+  --bg: #f2f2f7; --card: #ffffff; --ink: #1c1c1e; --ink2: #3a3a3c; --muted: #8e8e93;
+  --line: rgba(60, 60, 67, .14); --fill: #eeeef0;
+  --accent: #007aff; --accent2: #ff2d55;
+  --pm0: #007aff; --pm1: #34c759; --pm2: #ff9500; --pm3: #ff3b30;
+  --radius: 18px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 6px 20px rgba(0, 0, 0, .06);
+  --tab-h: calc(54px + env(safe-area-inset-bottom, 0px));
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.4; letter-spacing: -.01em; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-weight: 700; letter-spacing: -.025em; margin: 0; }
+button, input { font: inherit; color: inherit; letter-spacing: inherit; }
+button { cursor: pointer; }
+button:active { opacity: .6; }
+b { font-weight: 600; }
+small { font-size: 12px; color: var(--muted); }
+
+.app { display: grid; grid-template-columns: 1fr minmax(380px, 30%); height: 100vh; }
+
+/* ---------- 지도 ---------- */
+.map-wrap { position: relative; overflow: hidden; background: #cdeffd; }
+#map { position: absolute; inset: 0; }
+.map-badge, .home-btn {
+  position: absolute; border: 0; white-space: nowrap; font-weight: 600; font-size: 15px;
+  background: rgba(255, 255, 255, .78); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  border-radius: 999px; box-shadow: var(--shadow);
+}
+.map-badge { top: calc(14px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); padding: 8px 16px; pointer-events: none; max-width: calc(100% - 110px); overflow: hidden; text-overflow: ellipsis; }
+.home-btn { bottom: 22px; left: 14px; padding: 10px 16px; color: var(--accent); }
+
+.emo-pin { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+.emo-pin:hover .emo-bubble, .emo-pin.active .emo-bubble { transform: translateY(-3px) scale(1.06); }
+.emo-pin.active .emo-bubble { outline: 2.5px solid var(--accent); }
+.emo-bubble {
+  position: relative; display: flex; align-items: center; gap: 4px; background: #fff; border-radius: 16px; padding: 5px 9px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .18); transition: transform .18s ease;
+}
+.emo-bubble::after { content: ""; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #fff; border-bottom: 0; }
+.emo-bubble .w { font-size: 22px; line-height: 1; }
+.emo-bubble .t { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
+.emo-bubble .pm { font-size: 14px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; }
+.emo-name { margin-top: 8px; font-weight: 600; font-size: 12px; background: rgba(255, 255, 255, .9); padding: 1px 8px; border-radius: 999px; }
+.emo-time { font-weight: 600; font-size: 11px; color: #fff; background: var(--accent); padding: 1px 7px; border-radius: 999px; margin-bottom: 3px; font-variant-numeric: tabular-nums; }
+.decor { font-size: 28px; pointer-events: none; opacity: .9; }
+.zoomed .decor { display: none; }
+.car { font-size: 26px; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .25)); }
+.car.flip { transform: scaleX(-1); }
+.pick-pin { font-size: 28px; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, .25)); pointer-events: none; }
+.pm0 { background: #e1efff; } .pm1 { background: #e0f7e6; } .pm2 { background: #fff0d9; } .pm3 { background: #ffe2e0; }
+
+/* ---------- 패널 ---------- */
+.panel { background: var(--bg); overflow-y: auto; padding: 18px 16px 12px; display: flex; flex-direction: column; gap: 12px; border-left: 1px solid var(--line); }
+.nav-title { display: none; font-size: 32px; padding: 4px 4px 0; }
+.brand { display: flex; align-items: center; gap: 12px; padding: 0 4px; }
+.logo { font-size: 30px; width: 54px; height: 54px; border-radius: 13px; display: grid; place-items: center; background: linear-gradient(160deg, #6fc3ff, #007aff); box-shadow: var(--shadow); }
+.brand h1 { font-size: 26px; }
+.brand p { margin: 1px 0 0; color: var(--muted); font-size: 14px; }
+
+.card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+.banner { background: #fff4d6; border-radius: 14px; padding: 10px 12px; font-size: 13px; }
+
+.search { position: relative; display: flex; flex-direction: column; gap: 12px; }
+.field { position: relative; }
+.field label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 6px 2px; }
+.input-row { display: flex; gap: 6px; }
+.input-row input, #departTime { flex: 1; min-width: 0; border: 0; border-radius: 12px; padding: 11px 12px; font-size: 16px; outline: none; background: var(--fill); }
+.input-row input:focus, #departTime:focus { box-shadow: 0 0 0 3px rgba(0, 122, 255, .25); }
+.input-row input::placeholder { color: #aeaeb2; }
+.icon-btn { border: 0; background: var(--fill); border-radius: 12px; width: 44px; font-size: 17px; flex: 0 0 44px; }
+.swap-btn { position: absolute; right: 12px; top: 8px; z-index: 2; border: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--fill); color: var(--accent); font-weight: 700; }
+.suggest { position: absolute; z-index: 10; left: 0; right: 0; top: 100%; margin: 6px 0 0; padding: 0; list-style: none; background: rgba(255, 255, 255, .96); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-radius: 14px; box-shadow: 0 10px 40px rgba(0, 0, 0, .18); max-height: 280px; overflow-y: auto; }
+.suggest li { padding: 10px 14px; cursor: pointer; border-bottom: .5px solid var(--line); }
+.suggest li:last-child { border-bottom: 0; }
+.suggest li:hover { background: rgba(0, 122, 255, .08); }
+.suggest li small { display: block; }
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.seg { display: flex; flex: 1; min-width: 220px; background: var(--fill); border-radius: 10px; padding: 2px; }
+.seg .chip { flex: 1; border: 0; background: none; border-radius: 8px; padding: 7px 4px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.seg .chip.active { background: #fff; font-weight: 600; box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
+#departTime { flex: 0 0 auto; padding: 7px 10px; }
+
+.go-btn { border: 0; border-radius: 14px; padding: 14px; font-size: 17px; font-weight: 600; color: #fff; background: var(--accent); }
+.go-btn:disabled { opacity: .55; cursor: wait; }
+.quick { display: flex; gap: 8px; }
+.quick .chip { flex: 1; border: 0; border-radius: 12px; padding: 11px 6px; font-size: 14px; font-weight: 600; color: var(--accent); background: rgba(0, 122, 255, .1); white-space: nowrap; }
+.hint { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+.favs { display: flex; flex-wrap: wrap; gap: 8px; }
+.fav { display: inline-flex; max-width: 100%; background: #fff; border-radius: 999px; overflow: hidden; box-shadow: var(--shadow); }
+.fav button { border: 0; background: none; padding: 8px 4px 8px 13px; font-size: 13px; font-weight: 600; }
+.fav .fav-go { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fav .fav-del { padding: 8px 12px 8px 4px; color: var(--muted); font-weight: 400; }
+
+.sec-title { font-size: 20px; margin: 18px 4px 8px; }
+.sec-title small { font-weight: 400; margin-left: 4px; }
+.summary .row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
+.summary .big { font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin: 4px 0 10px; }
+.alert { background: rgba(0, 122, 255, .1); color: #0058c7; border-radius: 12px; padding: 11px 12px; margin-bottom: 12px; font-weight: 600; }
+.alert.snow { background: rgba(88, 86, 214, .12); color: #4541b8; }
+.countdown { background: #fff8e6; border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.6; margin-bottom: 10px; }
+.tips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tip { background: var(--fill); border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 500; }
+.insights, .extras { display: flex; flex-direction: column; }
+.insights { margin-top: 12px; border-top: .5px solid var(--line); }
+.insight { display: grid; grid-template-columns: 26px 80px 1fr; gap: 6px; align-items: start; padding: 11px 0; border-bottom: .5px solid var(--line); font-size: 14px; line-height: 1.45; }
+.insight:last-child { border-bottom: 0; padding-bottom: 2px; }
+.insight .l { color: var(--muted); }
+.extras h3 { font-size: 17px; margin-bottom: 2px; }
+.extras a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.cal-btn, .map-link { display: block; width: 100%; margin-top: 10px; text-align: center; text-decoration: none; border: 0; color: var(--accent); background: rgba(0, 122, 255, .1); border-radius: 12px; padding: 11px; font-size: 15px; font-weight: 600; }
+.map-link { display: none; }
+
+/* 동선 목록: iOS 묶음 목록 */
+.cp-list { list-style: none; margin: 0; padding: 0; background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.cp { display: grid; grid-template-columns: 50px 30px 1fr auto auto; align-items: center; gap: 8px; padding: 12px 14px; cursor: pointer; border-bottom: .5px solid var(--line); }
+.cp:last-child { border-bottom: 0; }
+.cp:hover { background: rgba(0, 0, 0, .03); }
+.cp .time { font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+.cp .w { font-size: 22px; }
+.cp .name { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp .t { font-weight: 600; font-size: 17px; font-variant-numeric: tabular-nums; }
+.cp .pm, .nc .pm, .hour .pm { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; }
+
+/* 상세 */
+.back-btn { border: 0; background: none; color: var(--accent); font-size: 17px; padding: 2px 2px 10px; }
+.switch { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 12px; scrollbar-width: none; }
+.switch::-webkit-scrollbar, .hourly::-webkit-scrollbar { display: none; }
+.sw { flex: 0 0 auto; border: 0; background: #fff; border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 500; white-space: nowrap; box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
+.sw.active { background: var(--accent); color: #fff; font-weight: 600; }
+.detail-head { text-align: center; }
+.detail-head .place { font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+.detail-head .sub { color: var(--muted); font-size: 13px; }
+.detail-head .hero { font-size: 60px; line-height: 1.15; margin-top: 6px; }
+.detail-head .temp { font-size: 68px; font-weight: 200; line-height: 1.05; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.detail-head .desc { color: var(--ink2); font-weight: 500; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; text-align: left; }
+.stat { background: var(--bg); border-radius: 12px; padding: 9px 12px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.stat b { display: block; font-size: 20px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pm-card { margin-top: 12px; }
+.pm-card h3 { font-size: 17px; }
+.pm-row { display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 10px; margin: 10px 0 0; }
+.pm-row .lbl { font-weight: 500; }
+.bar { height: 6px; background: var(--fill); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 99px; }
+.grade { font-size: 13px; font-weight: 500; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.hourly { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 12px; scrollbar-width: none; }
+.hour { flex: 0 0 60px; text-align: center; background: #fff; border-radius: 16px; padding: 9px 4px; font-size: 12px; cursor: pointer; border: 2px solid transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
+.hour.now { border-color: var(--accent); }
+.hour .h { color: var(--muted); font-weight: 600; }
+.hour .d { color: var(--accent2); }
+.hour .w { font-size: 22px; margin: 3px 0; }
+.hour .t { font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums; }
+.hour .p { color: var(--accent); font-size: 11px; }
+.hour .pm { margin: 5px auto 0; }
+
+/* 전국 */
+.intro p { margin: 0 0 8px; font-size: 14px; line-height: 1.55; color: var(--ink2); }
+.intro h3 { margin: 16px 0 8px; font-size: 17px; }
+.legend { display: flex; justify-content: space-around; margin-top: 12px; font-size: 12px; color: var(--muted); }
+.legend span { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.legend i { font-style: normal; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 18px; }
+.nation { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.nc { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 5px; border: 0; background: var(--bg); border-radius: 12px; padding: 9px 10px; text-align: left; }
+.nc .n { font-weight: 600; }
+.nc .w { font-size: 19px; }
+.nc .t { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.src { margin-top: auto; font-size: 11px; color: var(--muted); text-align: center; padding-top: 8px; }
+.toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 100; max-width: calc(100% - 32px); background: rgba(40, 40, 42, .92); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); color: #fff; padding: 11px 18px; border-radius: 999px; font-size: 14px; font-weight: 500; text-align: center; }
+.spinner { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.tabbar { display: none; }
+
+/* ---------- PC: 지도 왼쪽 / 패널 오른쪽 ---------- */
+@media (min-width: 861px) {
+  body[data-view="intro"] #resultView, body[data-view="intro"] #lifeView, body[data-view="intro"] #detailView,
+  body[data-view="result"] #introView, body[data-view="result"] #detailView,
+  body[data-view="detail"] #introView, body[data-view="detail"] #resultView, body[data-view="detail"] #lifeView { display: none; }
+}
+
+/* ---------- 휴대폰: 아래 탭으로 화면 나누기 ---------- */
+@media (max-width: 860px) {
+  .app { display: block; height: auto; }
+  .map-wrap { position: fixed; inset: 0 0 var(--tab-h) 0; z-index: 0; }
+  body:not([data-tab="map"]) .map-wrap { visibility: hidden; }
+  .home-btn { bottom: 16px; }
+
+  .panel { position: relative; z-index: 1; border-left: 0; overflow: visible; min-height: 100vh; min-height: 100dvh; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(var(--tab-h) + 18px); }
+  .nav-title { display: block; }
+  .brand { display: none; }
+  .map-link { display: block; }
+  body:not([data-tab="route"]) .panel > [data-tab="route"],
+  body:not([data-tab="life"]) .panel > [data-tab="life"],
+  body:not([data-tab="nation"]) .panel > [data-tab="nation"] { display: none !important; }
+  body:not(.has-route) #resultView { display: none; }
+  /* 지도 탭에서는 패널을 접고, 상세 화면만 아래에서 올라오는 시트로 보여준다 */
+  body[data-tab="map"] .panel { min-height: 0; padding: 0; background: none; height: 0; }
+  body[data-tab="map"] .panel > :not(#detailView) { display: none !important; }
+
+  body:not([data-view="detail"]) #detailView { display: none; }
+  #detailView { position: fixed; z-index: 20; inset: 0 0 var(--tab-h) 0; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg); padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 20px; animation: sheet .28s cubic-bezier(.2, .8, .2, 1); }
+  body[data-tab="map"] #detailView { top: auto; height: 62vh; height: 62dvh; padding-top: 12px; border-radius: 22px 22px 0 0; box-shadow: 0 -8px 40px rgba(0, 0, 0, .2); }
+  body[data-tab="map"] #detailView::before { content: ""; display: block; width: 38px; height: 5px; border-radius: 99px; background: #c7c7cc; margin: -4px auto 8px; }
+  @keyframes sheet { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; height: var(--tab-h); padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(249, 249, 249, .86); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-top: .5px solid rgba(0, 0, 0, .2); }
+  .tabbar button { border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10px; font-weight: 500; color: #8e8e93; }
+  .tabbar button.active { color: var(--accent); }
+  .tabbar svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .toast { bottom: calc(var(--tab-h) + 14px); }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body data-tab="map" data-view="intro">
+  <div class="app">
+    <!-- 좌측 70%: 지도 -->
+    <main class="map-wrap">
+      <div id="map"></div>
+      <div class="map-badge" id="mapBadge">🗺️ 대한민국 지금 날씨</div>
+      <button class="home-btn" id="homeBtn" title="전국 보기" hidden>🇰🇷 전국 보기</button>
+    </main>
+
+    <!-- 우측 30%: 검색/결과/상세 -->
+    <aside class="panel">
+      <h1 class="nav-title" id="navTitle">출근길</h1>
+      <header class="brand">
+        <div class="logo">🌤️</div>
+        <div>
+          <h1>출근길 하늘</h1>
+          <p>내 출근길 날씨 · 미세먼지 한눈에</p>
+        </div>
+      </header>
+
+      <div class="banner" id="mockBanner" hidden>
+        ⚠️ 실시간 데이터 연결에 실패해 <b>데모 데이터</b>를 보여주고 있어요.
+      </div>
+
+      <div class="favs" id="favs" data-tab="route" hidden></div>
+
+      <section class="card search" data-tab="route">
+        <div class="field">
+          <label for="fromInput">🏠 출발지</label>
+          <div class="input-row">
+            <input id="fromInput" autocomplete="off" placeholder="예) 서울역, 테헤란로 152" />
+            <button class="icon-btn" id="geoBtn" title="현재 위치">📍</button>
+            <button class="icon-btn" data-pick="from" title="지도에서 직접 고르기">🗺️</button>
+          </div>
+          <ul class="suggest" id="fromSuggest" hidden></ul>
+        </div>
+
+        <button class="swap-btn" id="swapBtn" title="출발/도착 바꾸기">⇅</button>
+
+        <div class="field">
+          <label for="toInput">🏢 도착지</label>
+          <div class="input-row">
+            <input id="toInput" autocomplete="off" placeholder="예) 강남역, 역삼동 823" />
+            <button class="icon-btn" data-pick="to" title="지도에서 직접 고르기">🗺️</button>
+          </div>
+          <ul class="suggest" id="toSuggest" hidden></ul>
+        </div>
+
+        <div class="field depart">
+          <label>⏰ 시각</label>
+          <div class="chips">
+            <div class="seg">
+              <button class="chip active" data-depart="now">지금 출발</button>
+              <button class="chip" data-depart="time">출발 시각</button>
+              <button class="chip" data-depart="arrive">도착 시각</button>
+            </div>
+            <input type="time" id="departTime" value="08:00" hidden />
+          </div>
+        </div>
+
+        <p class="hint">💡 도로명·지번 주소도 검색돼요. 안 나오면 🗺️ 를 눌러 지도에서 직접 찍어 주세요.</p>
+        <button class="go-btn" id="goBtn">🚗 출근길 날씨 보기</button>
+        <div class="quick">
+          <button class="chip" id="returnBtn">🌙 퇴근길 보기</button>
+          <button class="chip" id="favSaveBtn">⭐ 이 경로 저장</button>
+        </div>
+      </section>
+
+      <!-- 경로 결과 -->
+      <section id="resultView" data-tab="route">
+        <div class="card summary" id="summary"></div>
+        <h2 class="sec-title">🧭 동선 따라 날씨</h2>
+        <ol class="cp-list" id="cpList"></ol>
+      </section>
+
+      <!-- 지역 상세 -->
+      <!-- 생활 정보 (한마디·점심·음악·세차) -->
+      <section id="lifeView" data-tab="life">
+        <div class="card extras" id="extras"></div>
+      </section>
+
+      <section id="detailView">
+        <button class="back-btn" id="backBtn">‹ 뒤로</button>
+        <div id="detail"></div>
+      </section>
+
+      <!-- 초기 안내 -->
+      <section id="introView" class="card intro" data-tab="nation">
+        <p>지도의 날씨 핀이나 아래 도시를 누르면 그 지역 날씨를 자세히 볼 수 있어요.</p>
+        <p>출발지와 도착지를 입력하면 <b>출근 동선</b>을 따라 날씨와 미세먼지를 알려드려요.</p>
+        <div class="legend">
+          <span><i class="pm0">😆</i>좋음</span>
+          <span><i class="pm1">🙂</i>보통</span>
+          <span><i class="pm2">😷</i>나쁨</span>
+          <span><i class="pm3">🤢</i>매우나쁨</span>
+        </div>
+        <h3>🗺️ 전국 지금 날씨</h3>
+        <div class="nation" id="nation"><span class="hint">불러오는 중…</span></div>
+      </section>
+
+      <footer class="src">
+        날씨·대기질: Open-Meteo · 검색: OpenStreetMap Nominatim / Photon · 경로: OSRM · 지도: OpenFreeMap · v0.7
+      </footer>
+    </aside>
+  </div>
+
+  <!-- 휴대폰용 아래 탭 -->
+  <nav class="tabbar" id="tabbar">
+    <button data-go="map" class="active"><svg viewBox="0 0 24 24"><path d="M9 4 3 6.5v13L9 17l6 3 6-2.5v-13L15 7 9 4zM9 4v13M15 7v13"/></svg>지도</button>
+    <button data-go="route"><svg viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="6" r="2.4"/><path d="M8.4 18H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.6"/></svg>출근길</button>
+    <button data-go="life"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3.2"/></svg>생활</button>
+    <button data-go="nation"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>전국</button>
+  </nav>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+  <script>
+/* 출근길 하늘 — 초안
+ * 데이터: Open-Meteo(날씨/대기질), Nominatim(장소 검색), OSRM(경로), OpenFreeMap(지도 타일)
+ * 모두 API 키 없이 브라우저에서 바로 호출됩니다. 호출 실패 시 데모 데이터로 대체합니다.
+ */
+const TZ = 'Asia/Seoul';
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const KOREA_BOUNDS = [[124.9, 33.0], [130.2, 38.8]];
+const HOME_FIT = { padding: 30, pitch: 28, bearing: -8 };
+const ROUTE_FIT = { padding: { top: 120, bottom: 90, left: 80, right: 80 }, pitch: 32, bearing: -10, maxZoom: 14 };
+// 지도 중심이 벗어날 수 없는 범위 (대한민국: 서해 ~ 독도, 마라도 ~ 휴전선 부근)
+const KOREA_LIMIT = { w: 124.0, e: 132.0, s: 32.8, n: 39.0 };
+const inKorea = (lon, lat) => lon >= KOREA_LIMIT.w && lon <= KOREA_LIMIT.e && lat >= KOREA_LIMIT.s && lat <= KOREA_LIMIT.n;
+
+// 자주 쓰는 장소(즉시 추천). 그 외는 Enter 로 온라인 검색.
+const PRESETS = [
+  ['서울역', 37.5547, 126.9707], ['강남역', 37.4979, 127.0276], ['여의도역', 37.5216, 126.9242],
+  ['광화문', 37.5759, 126.9768], ['홍대입구역', 37.5572, 126.9245], ['잠실역', 37.5133, 127.1001],
+  ['판교역', 37.3948, 127.1111], ['수원역', 37.2660, 127.0001], ['인천시청', 37.4563, 126.7052],
+  ['인천국제공항', 37.4602, 126.4407], ['일산 정발산역', 37.6597, 126.7733], ['분당 서현역', 37.3850, 127.1234],
+  ['대전역', 36.3326, 127.4342], ['대구역', 35.8790, 128.5960], ['부산역', 35.1151, 129.0422],
+  ['해운대', 35.1631, 129.1636], ['광주송정역', 35.1376, 126.7915], ['세종시청', 36.4800, 127.2890],
+  ['울산시청', 35.5396, 129.3115], ['제주공항', 33.5070, 126.4930],
+].map(([name, lat, lon]) => ({ name, lat, lon }));
+
+// 초기 화면에 띄울 주요 도시
+const CITIES = [
+  ['서울', 37.5665, 126.9780], ['인천', 37.4563, 126.7052], ['춘천', 37.8813, 127.7298],
+  ['강릉', 37.7519, 128.8761], ['청주', 36.6424, 127.4890], ['대전', 36.3504, 127.3845],
+  ['안동', 36.5684, 128.7294], ['전주', 35.8242, 127.1480], ['대구', 35.8714, 128.6014],
+  ['광주', 35.1595, 126.8526], ['울산', 35.5384, 129.3114], ['부산', 35.1796, 129.0756],
+  ['목포', 34.8118, 126.3922], ['제주', 33.4996, 126.5312],
+].map(([name, lat, lon]) => ({ name, lat, lon, label: name }));
+
+const DECOR = [['🐳', 130.0, 37.0], ['⛵', 125.3, 36.2], ['🏔️', 128.47, 38.25], ['🍊', 126.95, 33.25], ['🐟', 129.2, 34.3]];
+
+const state = {
+  map: null, from: null, to: null, mock: false,
+  cityMarkers: [], routeMarkers: [], checkpoints: [], cities: [],
+  carRaf: 0, routeToken: 0, backTo: 'intro', picking: null, pickMarkers: {}, routeActive: false, lastRoute: null, trip: 'go', depart: null, departMode: 'now', routeDur: 0, detailP: null, routeBounds: null,
+};
+
+/* ------------------------------------------------------------------ 유틸 */
+async function getJSON(url, ms = 9000) {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: c.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function toast(msg, ms = 2600) {
+  const el = $('#toast');
+  el.textContent = msg; el.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), ms);
+}
+
+function kstKey(d) { // Open-Meteo hourly 키 형식: 2026-01-01T08:00
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(d);
+  const g = (t) => p.find((x) => x.type === t).value;
+  return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:00`;
+}
+const hm = (d) => new Intl.DateTimeFormat('ko-KR', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d);
+
+function haversine(a, b) { // [lon,lat] 두 점 사이 m
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * rad, dLon = (b[0] - a[0]) * rad;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+/* ------------------------------------------------------------------ 날씨/미세먼지 해석 */
+function wInfo(code, isDay = 1) {
+  if (code === 0) return isDay ? ['☀️', '맑음'] : ['🌙', '맑음'];
+  if (code <= 2) return isDay ? ['🌤️', '구름 조금'] : ['☁️', '구름 조금'];
+  if (code === 3) return ['☁️', '흐림'];
+  if (code === 45 || code === 48) return ['🌫️', '안개'];
+  if (code >= 51 && code <= 57) return ['🌦️', '이슬비'];
+  if (code >= 61 && code <= 67) return ['🌧️', '비'];
+  if (code >= 71 && code <= 77) return ['❄️', '눈'];
+  if (code >= 80 && code <= 82) return ['🌧️', '소나기'];
+  if (code >= 85 && code <= 86) return ['🌨️', '눈'];
+  if (code >= 95) return ['⛈️', '뇌우'];
+  return ['🌡️', '-'];
+}
+const isWet = (code) => code >= 51 && code !== undefined;
+const isSnow = (code) => (code >= 71 && code <= 77) || code === 85 || code === 86;
+
+// 환경부 예보 등급 기준 (㎍/㎥)
+const PM_STEPS = { pm10: [30, 80, 150], pm25: [15, 35, 75] };
+const PM_META = [
+  { label: '좋음', face: '😆', color: 'var(--pm0)' },
+  { label: '보통', face: '🙂', color: 'var(--pm1)' },
+  { label: '나쁨', face: '😷', color: 'var(--pm2)' },
+  { label: '매우나쁨', face: '🤢', color: 'var(--pm3)' },
+];
+function pmLevel(kind, v) {
+  if (v == null || isNaN(v)) return null;
+  const s = PM_STEPS[kind];
+  return v <= s[0] ? 0 : v <= s[1] ? 1 : v <= s[2] ? 2 : 3;
+}
+function pmOverall(o) {
+  const a = pmLevel('pm10', o.pm10), b = pmLevel('pm25', o.pm25);
+  if (a == null && b == null) return null;
+  return Math.max(a ?? 0, b ?? 0);
+}
+const pmBadge = (lvl) => lvl == null ? '<span class="pm">❔</span>' : `<span class="pm pm${lvl}" title="미세먼지 ${PM_META[lvl].label}">${PM_META[lvl].face}</span>`;
+const r0 = (v) => (v == null || isNaN(v) ? '-' : Math.round(v));
+
+/* ------------------------------------------------------------------ 데이터: 날씨 + 대기질 */
+async function fetchWeather(points) {
+  const lat = points.map((p) => p.lat.toFixed(4)).join(',');
+  const lon = points.map((p) => p.lon.toFixed(4)).join(',');
+  const common = `latitude=${lat}&longitude=${lon}&timezone=${encodeURIComponent(TZ)}&forecast_days=4&past_days=1`;
+  try {
+    const [w, a] = await Promise.all([
+      getJSON(`https://api.open-meteo.com/v1/forecast?${common}&wind_speed_unit=ms` +
+        '&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day' +
+        '&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,is_day'),
+      getJSON(`https://air-quality-api.open-meteo.com/v1/air-quality?${common}&current=pm10,pm2_5&hourly=pm10,pm2_5`),
+    ]);
+    const W = Array.isArray(w) ? w : [w], A = Array.isArray(a) ? a : [a];
+    return points.map((_, i) => normalize(W[i], A[i]));
+  } catch (e) {
+    console.warn('날씨 API 실패 → 데모 데이터', e);
+    setMock(true);
+    return points.map(mockWeather);
+  }
+}
+
+function normalize(w, a) {
+  const air = {};
+  (a?.hourly?.time || []).forEach((t, i) => (air[t] = { pm10: a.hourly.pm10[i], pm25: a.hourly.pm2_5[i] }));
+  const h = w.hourly;
+  return {
+    current: {
+      temp: w.current.temperature_2m, feels: w.current.apparent_temperature, hum: w.current.relative_humidity_2m,
+      precip: w.current.precipitation, code: w.current.weather_code, wind: w.current.wind_speed_10m, isDay: w.current.is_day,
+      pm10: a?.current?.pm10, pm25: a?.current?.pm2_5,
+    },
+    hourly: h.time.map((t, i) => ({
+      time: t, temp: h.temperature_2m[i], feels: h.apparent_temperature[i], hum: h.relative_humidity_2m[i],
+      pop: h.precipitation_probability[i], precip: h.precipitation[i], code: h.weather_code[i],
+      wind: h.wind_speed_10m[i], isDay: h.is_day[i], pm10: air[t]?.pm10, pm25: air[t]?.pm25,
+    })),
+  };
+}
+
+// 네트워크가 막혔을 때 화면 확인용 가짜 데이터 (좌표 기반 고정 난수)
+function mockWeather(p) {
+  let seed = Math.abs(Math.sin(p.lat * 12.9898 + p.lon * 78.233) * 43758.5453) % 1;
+  const rnd = () => (seed = (seed * 9301 + 0.49297) % 1);
+  const codes = [0, 1, 2, 3, 3, 61, 0, 1, 45, 80];
+  const base = 4 + rnd() * 8, pmBase = 15 + rnd() * 90, code0 = codes[Math.floor(rnd() * codes.length)];
+  const start = new Date(); start.setMinutes(0, 0, 0); start.setHours(start.getHours() - 25);
+  const hourly = Array.from({ length: 100 }, (_, i) => {
+    const d = new Date(start.getTime() + i * 3600e3);
+    const hr = +kstKey(d).slice(11, 13);
+    const code = i % 7 === 5 ? 61 : code0;
+    const temp = base + 5 * Math.sin(((hr - 9) / 24) * 2 * Math.PI);
+    const pm10 = Math.max(5, pmBase + 20 * Math.sin(i / 4));
+    return { time: kstKey(d), temp, feels: temp - 1.5, hum: 45 + 20 * rnd(), pop: code >= 51 ? 70 : Math.round(rnd() * 20), precip: code >= 51 ? 1.2 : 0, code, wind: 1 + rnd() * 4, isDay: hr >= 7 && hr < 18 ? 1 : 0, pm10, pm25: pm10 * 0.5 };
+  });
+  return { current: { ...hourly[25] }, hourly };
+}
+
+function setMock(on) { state.mock = on; $('#mockBanner').hidden = !on; }
+
+// 특정 시각의 날씨 스냅샷 (45분 이내면 실황, 아니면 시간별 예보)
+function snapshot(wx, date) {
+  const idx = wx.hourly.findIndex((h) => h.time === kstKey(date));
+  const h = idx >= 0 ? wx.hourly[idx] : null;
+  const near = Math.abs(date - Date.now()) < 45 * 60e3;
+  const base = near || !h ? wx.current : h;
+  return { ...base, pop: h?.pop ?? null, idx: idx >= 0 ? idx : Math.max(0, wx.hourly.findIndex((x) => x.time === kstKey(new Date()))), forecast: !(near || !h) };
+}
+
+/* ------------------------------------------------------------------ 데이터: 장소 검색 / 경로 */
+// 상세 주소에서 검색을 방해하는 부분(101동 1203호, 3층, 괄호)을 떼어낸다
+function cleanAddr(q) {
+  return q.replace(/\([^)]*\)/g, ' ')
+    .replace(/(^|\s)\d+동(\s*\d+호)?(?=\s|$)/g, ' ')
+    .replace(/\s(지하\s*)?\d+층(?=\s|$)/g, ' ')
+    .replace(/\s\d+호(?=\s|$)/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+// Nominatim: Enter/버튼으로 검색할 때만 사용 (정책상 자동완성 금지)
+async function nominatim(q) {
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=kr&accept-language=ko&addressdetails=1&limit=8&q=${encodeURIComponent(q)}`;
+  const rows = await getJSON(url);
+  return rows.map((r) => {
+    const a = r.address || {};
+    const road = [a.road, a.house_number].filter(Boolean).join(' ');
+    const parts = r.display_name.split(',').map((x) => x.trim());
+    return {
+      name: r.name || road || parts[0],
+      sub: parts.slice(1).filter((x) => x !== '대한민국' && !/^\d{5}$/.test(x)).reverse().join(' '),
+      lat: +r.lat, lon: +r.lon,
+    };
+  }).filter((r) => inKorea(r.lon, r.lat));
+}
+
+// Photon: 글자를 치는 동안 보여주는 자동완성용
+async function photon(q) {
+  const url = `https://photon.komoot.io/api/?limit=8&lang=default&bbox=124.5,33.0,132.0,38.9&q=${encodeURIComponent(q)}`;
+  const j = await getJSON(url, 7000);
+  return (j.features || []).filter((f) => (f.properties.countrycode || '').toUpperCase() === 'KR').map((f) => {
+    const p = f.properties, road = [p.street, p.housenumber].filter(Boolean).join(' ');
+    const sub = [p.state, p.city, p.county, p.district, p.name ? road : ''].filter((x, i, arr) => x && arr.indexOf(x) === i).join(' ');
+    return { name: p.name || road || p.district || p.city || q, sub, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] };
+  }).filter((r) => inKorea(r.lon, r.lat));
+}
+
+// 상세 주소 검색: 전체 주소로 먼저 찾고, 없으면 뒤에서부터 한 덩어리씩 줄여 가며 근처 위치를 찾는다
+async function searchPlaces(q) {
+  const tokens = (cleanAddr(q) || q).split(' ');
+  for (let cut = 0; cut <= Math.min(2, tokens.length - 1); cut++) {
+    const qq = tokens.slice(0, tokens.length - cut).join(' ');
+    if (cut) await sleep(1100); // Nominatim 정책: 1초에 1건
+    let rows = await nominatim(qq).catch(() => []);
+    if (!rows.length) rows = await photon(qq).catch(() => []);
+    if (rows.length) return cut ? rows.map((r) => ({ ...r, approx: true, sub: '📍 근처 위치 · ' + r.sub })) : rows;
+  }
+  return [];
+}
+
+// 지도에서 찍은 지점의 주소
+async function reverseAddr(p) {
+  const j = await getJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=ko&zoom=18&lat=${p.lat}&lon=${p.lon}`);
+  const a = j.address || {};
+  return [a.city || a.county || a.town, a.borough || a.city_district, a.suburb || a.quarter || a.neighbourhood || a.village, a.road, a.house_number]
+    .filter((x, i, arr) => x && arr.indexOf(x) === i).join(' ') || null;
+}
+
+async function reverseLabel(p) {
+  const j = await getJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=ko&zoom=16&lat=${p.lat}&lon=${p.lon}`);
+  const a = j.address || {};
+  const big = a.borough || a.city_district || a.county || a.city || a.town;
+  const small = a.suburb || a.quarter || a.neighbourhood || a.village;
+  return [big, small].filter(Boolean).join(' ') || null;
+}
+
+async function fetchRoute(from, to) {
+  try {
+    const j = await getJSON(`https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson`);
+    const r = j.routes[0];
+    return { coords: r.geometry.coordinates, distance: r.distance, duration: r.duration, approx: false };
+  } catch (e) {
+    console.warn('경로 API 실패 → 직선 경로', e);
+    const a = [from.lon, from.lat], b = [to.lon, to.lat], n = 40;
+    const coords = Array.from({ length: n + 1 }, (_, i) => [a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n]);
+    const distance = haversine(a, b) * 1.3;
+    return { coords, distance, duration: distance / (35 / 3.6), approx: true };
+  }
+}
+
+// 경로를 따라 일정 간격으로 "날씨 체크포인트"를 뽑는다
+function sampleCheckpoints(route) {
+  const c = route.coords, cum = [0];
+  for (let i = 1; i < c.length; i++) cum.push(cum[i - 1] + haversine(c[i - 1], c[i]));
+  const total = cum[cum.length - 1] || 1;
+  const n = Math.min(7, Math.max(3, Math.round(total / 1000 / 8) + 2));
+  const out = [];
+  for (let k = 0, i = 1; k < n; k++) {
+    const target = (total * k) / (n - 1);
+    while (i < c.length - 1 && cum[i] < target) i++;
+    const seg = cum[i] - cum[i - 1] || 1, f = Math.min(1, Math.max(0, (target - cum[i - 1]) / seg));
+    out.push({ lon: c[i - 1][0] + (c[i][0] - c[i - 1][0]) * f, lat: c[i - 1][1] + (c[i][1] - c[i - 1][1]) * f, frac: target / total });
+  }
+  route.cum = cum; route.total = total;
+  return out;
+}
+
+/* ------------------------------------------------------------------ 지도 */
+async function initMap() {
+  let style;
+  try {
+    style = await getJSON('https://tiles.openfreemap.org/styles/positron', 6000);
+  } catch (e) { // 타일 서버에 못 붙어도 3D 한반도 + 경로는 그릴 수 있게
+    style = { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#cdeffd' } }] };
+  }
+  const map = (state.map = new maplibregl.Map({
+    container: 'map', style, bounds: KOREA_BOUNDS, fitBoundsOptions: { padding: 30 },
+    pitch: 28, bearing: -8, maxPitch: 60, minZoom: 4.8, renderWorldCopies: false, attributionControl: { compact: true },
+  }));
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-left');
+  map.on('zoom', () => $('#map').classList.toggle('zoomed', map.getZoom() > 8));
+  // 대한민국 밖으로 끌고 나가면 다시 안쪽으로 되돌린다
+  map.on('moveend', () => {
+    if (map.isMoving()) return;
+    const c = map.getCenter();
+    const lng = Math.min(KOREA_LIMIT.e, Math.max(KOREA_LIMIT.w, c.lng)), lat = Math.min(KOREA_LIMIT.n, Math.max(KOREA_LIMIT.s, c.lat));
+    if (Math.abs(lng - c.lng) > 1e-6 || Math.abs(lat - c.lat) > 1e-6) map.easeTo({ center: [lng, lat], duration: 500 });
+  });
+  map.on('click', onMapPick);
+
+  map.on('load', () => {
+    map.setLight({ anchor: 'viewport', color: '#ffffff', intensity: 0.35, position: [1.4, 210, 35] });
+    map.addSource('korea', { type: 'geojson', data: window.KOREA_GEOJSON || { type: 'FeatureCollection', features: [] } });
+    if (!window.KOREA_GEOJSON) loadKoreaOnline().then((fc) => { map.getSource('korea').setData(fc); map.setLayoutProperty('world-mask', 'visibility', 'visible'); })
+      .catch((e) => console.warn('시·도 지도 불러오기 실패', e));
+    // 전국 보기에서는 주변 나라를 반투명 바다색으로 흐리게 해서 대한민국이 돋보이게 한다 (확대하면 실제 지도가 나타남)
+    map.addSource('mask', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-179, -80], [179, -80], [179, 80], [-179, 80], [-179, -80]]] } } });
+    map.addLayer({ id: 'world-mask', type: 'fill', source: 'mask', maxzoom: 9.5, layout: { visibility: window.KOREA_GEOJSON ? 'visible' : 'none' },
+      paint: { 'fill-color': '#cdeffd', 'fill-antialias': false, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 7.5, 0.5, 9.5, 0] } });
+    // 바닥 그림자 + 통통 튀어나온 3D 한반도 (확대하면 서서히 사라지고 실제 지도가 보임)
+    map.addLayer({ id: 'korea-shadow', type: 'fill', source: 'korea', maxzoom: 10,
+      paint: { 'fill-color': '#6f9dbb', 'fill-translate': [8, 12], 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0.28, 9, 0] } });
+    map.addLayer({ id: 'korea-3d', type: 'fill-extrusion', source: 'korea', maxzoom: 10.5,
+      paint: {
+        'fill-extrusion-color': ['get', 'color'], // 시·도별 파스텔 색
+        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 5, ['*', 30000, ['get', 'h']], 8, ['*', 9000, ['get', 'h']], 10, 0],
+        'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0.96, 8, 0.7, 10, 0],
+      } });
+
+    map.addSource('route', { type: 'geojson', lineMetrics: true, data: lineFC([]) });
+    map.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 10 } });
+    map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-width': 6, 'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#007aff', 1, '#5ac8fa'] } });
+
+    DECOR.forEach(([e, lon, lat]) => {
+      const el = document.createElement('div'); el.className = 'decor'; el.textContent = e;
+      new maplibregl.Marker({ element: el }).setLngLat([lon, lat]).addTo(map);
+    });
+    loadCities();
+  });
+}
+
+// korea.js 가 없을 때(파일 하나짜리 버전): 시·도 경계를 인터넷에서 받아 색을 입힌다
+const SIDO = { Seoul: ['서울', '#ff9fb8', 1.35], Incheon: ['인천', '#9fd3ff', 1.1], Gyeonggi: ['경기', '#ffd98a', 1.0], Gangwon: ['강원', '#a5e6b8', 1.2],
+  'North Chungcheong': ['충북', '#c9b6ff', 1.05], 'South Chungcheong': ['충남', '#ffb89a', 0.9], Sejong: ['세종', '#ff8fd0', 1.3], Daejeon: ['대전', '#7fd8d0', 1.3],
+  'North Jeolla': ['전북', '#b9e986', 0.95], 'South Jeolla': ['전남', '#8fe0c8', 0.85], Gwangju: ['광주', '#ffa3a3', 1.3],
+  'North Gyeongsang': ['경북', '#ffe08a', 1.1], 'South Gyeongsang': ['경남', '#a9c8ff', 0.95], Daegu: ['대구', '#ff9ec4', 1.3], Ulsan: ['울산', '#c3a6ff', 1.25], Busan: ['부산', '#ffb37a', 1.3], Jeju: ['제주', '#ffcf7a', 1.0] };
+async function loadKoreaOnline() {
+  const t = await getJSON('https://unpkg.com/datamaps@0.5.9/src/js/data/kor.topo.json', 15000);
+  const fc = topojson.feature(t, t.objects.kor);
+  return { type: 'FeatureCollection', features: fc.features.filter((f) => SIDO[f.properties.name]).map((f) => {
+    const [name, color, h] = SIDO[f.properties.name];
+    return { type: 'Feature', properties: { name, color, h }, geometry: f.geometry };
+  }) };
+}
+
+const lineFC = (coords) => ({ type: 'FeatureCollection', features: coords.length > 1 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } }] : [] });
+
+function makePin(p, snap, { time, onClick } = {}) {
+  const [emo] = wInfo(snap.code, snap.isDay);
+  const el = document.createElement('div');
+  el.className = 'emo-pin';
+  el.innerHTML = `${time ? `<div class="emo-time">${esc(time)}</div>` : ''}
+    <div class="emo-bubble"><span class="w">${emo}</span><span class="t">${r0(snap.temp)}°</span>${pmBadge(pmOverall(snap))}</div>
+    <div class="emo-name">${esc(p.label)}</div>`;
+  el.addEventListener('click', (ev) => { ev.stopPropagation(); onClick?.(); });
+  const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lon, p.lat]).addTo(state.map);
+  return { marker, el };
+}
+
+async function loadCities() {
+  const wx = await fetchWeather(CITIES);
+  state.cities = CITIES.map((c, i) => ({ ...c, wx: wx[i], when: new Date() }));
+  showCityMarkers();
+  renderNation();
+}
+function showCityMarkers() {
+  state.cityMarkers.forEach((m) => m.marker.remove());
+  if (state.routeActive) { state.cityMarkers = []; return; }
+  state.cityMarkers = state.cities.map((c) => {
+    const pin = makePin(c, snapshot(c.wx, c.when), { onClick: () => showDetail(c, 'intro') });
+    c.el = pin.el; return pin;
+  });
+}
+
+function setPickMarker(key, p) {
+  state.pickMarkers[key]?.remove(); delete state.pickMarkers[key];
+  if (!p) return;
+  const el = document.createElement('div'); el.className = 'pick-pin'; el.textContent = key === 'from' ? '🏠' : '🏢';
+  state.pickMarkers[key] = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lon, p.lat]).addTo(state.map);
+}
+
+async function onMapPick(e) {
+  const key = state.picking;
+  if (!key) return;
+  const p = { lat: e.lngLat.lat, lon: e.lngLat.lng };
+  if (!inKorea(p.lon, p.lat)) return toast('대한민국 안에서 골라 주세요 🇰🇷');
+  state.picking = null; state.map.getCanvas().style.cursor = '';
+  const input = $(`#${key}Input`), place = { ...p, name: `지도 선택 (${p.lat.toFixed(4)}, ${p.lon.toFixed(4)})` };
+  state[key] = place; input.value = place.name; setPickMarker(key, p);
+  toast(key === 'from' ? '출발지를 정했어요 🏠' : '도착지를 정했어요 🏢');
+  if (isMobile()) setTab('route');
+  try {
+    const label = await reverseAddr(p);
+    if (label && state[key] === place) { place.name = label; input.value = label; }
+  } catch (err) { /* 주소를 못 찾아도 좌표로 계속 사용 */ }
+}
+
+// 초기 화면 패널의 전국 날씨 목록
+function renderNation() {
+  const box = $('#nation'); box.innerHTML = '';
+  state.cities.forEach((c) => {
+    const s = snapshot(c.wx, new Date()), b = document.createElement('button');
+    b.className = 'nc';
+    b.innerHTML = `<span class="n">${esc(c.label)}</span><span class="w">${wInfo(s.code, s.isDay)[0]}</span><span class="t">${r0(s.temp)}°</span>${pmBadge(pmOverall(s))}`;
+    b.addEventListener('click', () => showDetail(c, 'intro'));
+    box.appendChild(b);
+  });
+}
+
+function clearRoute() {
+  state.routeToken++;
+  cancelAnimationFrame(state.carRaf);
+  state.routeMarkers.forEach((m) => m.remove());
+  state.routeMarkers = []; state.checkpoints = [];
+  state.map.getSource('route')?.setData(lineFC([]));
+}
+
+function goHome() {
+  clearRoute(); state.routeActive = false; showCityMarkers();
+  document.body.classList.remove('has-route'); $('#extras').innerHTML = LIFE_EMPTY;
+  $('#homeBtn').hidden = true; $('#mapBadge').textContent = '🗺️ 대한민국 지금 날씨'; document.title = '출근길 하늘';
+  show('intro');
+  state.map.fitBounds(KOREA_BOUNDS, { ...HOME_FIT, duration: 1600 });
+}
+
+function drawRoute(route, token) {
+  const map = state.map, c = route.coords, src = map.getSource('route');
+  const t0 = performance.now(), dur = 1500;
+  const step = (t) => {
+    if (token !== state.routeToken) return;
+    const k = Math.min(1, (t - t0) / dur);
+    src.setData(lineFC(c.slice(0, Math.max(2, Math.ceil(c.length * k)))));
+    if (k < 1) requestAnimationFrame(step); else driveCar(route, token);
+  };
+  requestAnimationFrame(step);
+}
+
+// 귀여운 자동차가 경로를 따라 계속 달린다
+function driveCar(route, token) {
+  const el = document.createElement('div'); el.className = 'car'; el.textContent = '🚗';
+  const marker = new maplibregl.Marker({ element: el }).setLngLat(route.coords[0]).addTo(state.map);
+  state.routeMarkers.push(marker);
+  const { coords: c, cum, total } = route, loop = 9000, t0 = performance.now();
+  let i = 1;
+  const step = (t) => {
+    if (token !== state.routeToken) return;
+    const k = (((t - t0) % loop) / loop) * 1.12; // 끝에서 잠깐 쉬기
+    const d = Math.min(1, k) * total;
+    if (cum[i - 1] > d) i = 1;
+    while (i < c.length - 1 && cum[i] < d) i++;
+    const f = (d - cum[i - 1]) / (cum[i] - cum[i - 1] || 1);
+    marker.setLngLat([c[i - 1][0] + (c[i][0] - c[i - 1][0]) * f, c[i - 1][1] + (c[i][1] - c[i - 1][1]) * f]);
+    el.classList.toggle('flip', c[i][0] > c[i - 1][0]); // 🚗 는 왼쪽을 보고 있어서 동쪽으로 갈 땐 뒤집기
+    state.carRaf = requestAnimationFrame(step);
+  };
+  state.carRaf = requestAnimationFrame(step);
+}
+
+/* ------------------------------------------------------------------ 경로 검색 흐름 */
+function departDate(duration = 0) {
+  const mode = document.querySelector('.chip[data-depart].active').dataset.depart;
+  state.departMode = mode;
+  if (mode === 'now') return new Date();
+  const [h, m] = ($('#departTime').value || '08:00').split(':').map(Number);
+  const d = new Date(); d.setHours(h, m, 0, 0);
+  if (mode === 'arrive') d.setTime(Math.floor((d.getTime() - duration * 1000) / 60e3) * 60e3); // 도착 시각에서 이동 시간을 빼고 분 단위로 내림
+  if (d < Date.now() - 10 * 60e3) d.setDate(d.getDate() + 1); // 이미 지난 시각이면 내일
+  return d;
+}
+
+// 도착 카운트다운 (20초마다 새로 계산)
+function updateCountdown() {
+  const el = $('#countdown');
+  if (!el || !state.depart) return;
+  const dur = state.routeDur * 1000, today = kstKey(new Date()).slice(0, 10);
+  const day = (d) => (kstKey(d).slice(0, 10) !== today ? '내일 ' : '');
+  const span = (min) => (min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60}분` : `${min}분`);
+  const note = '<small> · 교통 체증은 반영되지 않아요</small>';
+  if (state.departMode === 'now') { el.innerHTML = `🏁 지금 출발하면 <b>${hm(new Date(Date.now() + dur))}</b> 도착 예정${note}`; return; }
+  const dep = state.depart, arr = new Date(Math.ceil((dep.getTime() + dur) / 60e3) * 60e3), left = Math.round((dep - Date.now()) / 60e3);
+  const head = state.departMode === 'arrive'
+    ? `🏁 <b>${day(arr)}${hm(arr)}</b> 도착하려면 <b>${hm(dep)}</b> 출발`
+    : `🏁 <b>${day(dep)}${hm(dep)}</b> 출발 → <b>${hm(arr)}</b> 도착 예정`;
+  const cd = left > 0 ? `⏳ 출발까지 <b>${span(left)}</b> 남았어요` : left > -5 ? '🚀 <b>지금 출발하세요!</b>' : `⚠️ 출발 시각이 ${span(-left)} 지났어요`;
+  el.innerHTML = `${head}<br>${cd}${note}`;
+}
+
+async function findRoute() {
+  const btn = $('#goBtn');
+  if (btn.disabled) return;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner">🌀</span> 하늘 살피는 중…';
+  try {
+    for (const k of ['from', 'to']) { // 입력만 하고 선택 안 한 경우 자동으로 첫 결과 사용
+      const v = $(`#${k}Input`).value.trim();
+      if (!v) return toast(k === 'from' ? '출발지를 입력해 주세요 🏠' : '도착지를 입력해 주세요 🏢');
+      if (!state[k] || state[k].name !== v) {
+        const hit = PRESETS.find((p) => p.name === v) || (await searchPlaces(v).catch(() => []))[0] || PRESETS.find((p) => p.name.includes(v));
+        if (!hit) return toast(`'${v}' 위치를 찾지 못했어요. 🗺️ 로 지도에서 골라 주세요 🥲`, 4000);
+        if (hit.approx) toast(`정확한 주소를 못 찾아 '${hit.name}' 근처로 잡았어요`, 4000);
+        state[k] = { ...hit, name: v };
+      }
+    }
+    clearRoute(); state.routeActive = true;
+    const token = state.routeToken, map = state.map, { from, to } = state;
+    state.cityMarkers.forEach((m) => m.marker.remove());
+
+    const route = await fetchRoute(from, to);
+    const cps = sampleCheckpoints(route);
+    const depart = departDate(route.duration);
+
+    // 네비게이션처럼 동선으로 확대
+    const b = route.coords.reduce((bb, p) => bb.extend(p), new maplibregl.LngLatBounds(route.coords[0], route.coords[0]));
+    state.routeBounds = b;
+    map.fitBounds(b, { ...ROUTE_FIT, duration: 2200 });
+    drawRoute(route, token);
+    $('#homeBtn').hidden = false; $('#mapBadge').textContent = `${state.trip === 'back' ? '🌙 퇴근길' : '🚗'} ${from.name} → ${to.name}`;
+
+    const wx = await fetchWeather(cps);
+    if (token !== state.routeToken) return;
+    state.checkpoints = cps.map((p, i) => {
+      const when = new Date(depart.getTime() + p.frac * route.duration * 1000);
+      const label = i === 0 ? from.name : i === cps.length - 1 ? to.name : `경유 ${i}`;
+      return { ...p, wx: wx[i], when, label, role: i === 0 ? '출발' : i === cps.length - 1 ? '도착' : '통과' };
+    });
+    renderRoute(route, depart);
+    state.lastRoute = { from, to };
+    labelCheckpoints(token);
+  } catch (e) {
+    console.error(e); toast('경로를 불러오지 못했어요. 잠시 후 다시 시도해 주세요 🥲');
+  } finally {
+    btn.disabled = false; btn.textContent = '🚗 출근길 날씨 보기';
+  }
+}
+
+// 체감온도에 맞는 옷차림
+function outfit(f) {
+  if (f >= 28) return '민소매·반팔, 반바지';
+  if (f >= 23) return '반팔, 얇은 셔츠';
+  if (f >= 20) return '긴팔 셔츠, 얇은 가디건';
+  if (f >= 17) return '얇은 니트, 맨투맨';
+  if (f >= 12) return '자켓, 가디건';
+  if (f >= 9) return '트렌치코트, 점퍼';
+  if (f >= 5) return '코트, 두꺼운 니트';
+  return '패딩, 목도리·장갑';
+}
+
+// 출발 시각부터 12시간 동안 출발지·도착지에 비/눈이 언제 오고 그치는지
+function rainTiming(cps, depart) {
+  const A = cps[0].wx.hourly, B = cps[cps.length - 1].wx.hourly;
+  const i0 = A.findIndex((h) => h.time === kstKey(depart));
+  if (i0 < 0) return '예보 정보를 찾지 못했어요';
+  const wet = (h) => !!h && ((h.precip ?? 0) >= 0.1 || (h.pop ?? 0) >= 60 || h.code >= 51);
+  const hrs = [];
+  for (let i = i0; i < Math.min(A.length, i0 + 12); i++) {
+    const b = B.find((x) => x.time === A[i].time);
+    hrs.push({ time: A[i].time, wet: wet(A[i]) || wet(b), snow: isSnow(A[i].code) || isSnow(b?.code) });
+  }
+  const lab = (t) => (t.slice(0, 10) !== hrs[0].time.slice(0, 10) ? '다음 날 ' : '') + +t.slice(11, 13) + '시';
+  const s = hrs.findIndex((h) => h.wet);
+  if (s < 0) return '필요 없어요 <small>(12시간 안에 비·눈 소식 없음)</small>';
+  let e = s; while (e < hrs.length && hrs[e].wet) e++;
+  const snow = hrs.slice(s, e).some((h) => h.snow);
+  const end = e < hrs.length ? `${lab(hrs[e].time)}쯤 그쳐요` : '한동안 계속돼요';
+  return s === 0 ? `<b>출발할 때 ${snow ? '눈이' : '비가'} 와요</b> · ${end}` : `<b>${lab(hrs[s].time)}쯤부터 ${snow ? '눈' : '비'}</b> · ${end}`;
+}
+
+// 출발지 기준, 하루 전 같은 시각과 기온 비교
+function yesterdayDiff(cp) {
+  const now = snapshot(cp.wx, cp.when);
+  const y = cp.wx.hourly.find((h) => h.time === kstKey(new Date(cp.when.getTime() - 86400e3)));
+  if (!y || now.temp == null || y.temp == null) return null;
+  const d = Math.round(now.temp - y.temp);
+  return d === 0 ? '하루 전 이 시간과 비슷해요' : `하루 전 이 시간보다 <b>${Math.abs(d)}° ${d > 0 ? '높아요 🔺' : '낮아요 🔻'}</b>`;
+}
+
+function buildInsights(cps, snaps, depart) {
+  const out = [];
+  const feels = snaps.map((s) => s.feels ?? s.temp).filter((v) => v != null && !isNaN(v));
+  if (feels.length) { const lo = Math.min(...feels); out.push(['👕', '옷차림', `<b>${outfit(lo)}</b> <small>(체감 ${r0(lo)}°)</small>`]); }
+  out.push(['☂️', '우산', rainTiming(cps, depart)]);
+  const y = yesterdayDiff(cps[0]);
+  if (y) out.push(['📅', '어제와 비교', y]);
+  return out.map(([e, l, v]) => `<div class="insight"><span>${e}</span><span class="l">${l}</span><span>${v}</span></div>`).join('');
+}
+
+/* ---------------- 생활 정보: 한마디 / 점심 / 음악 / 세차 ---------------- */
+// 날씨를 한 가지 분위기로 분류
+function moodOf(list, worstPm = 0) {
+  const any = (f) => list.some(f), feels = list.map((s) => s.feels ?? s.temp).filter((v) => v != null && !isNaN(v));
+  if (any((s) => isSnow(s.code))) return 'snow';
+  if (any((s) => s.code >= 51 || (s.pop ?? 0) >= 60)) return 'rain';
+  if (worstPm >= 2) return 'dust';
+  if (any((s) => s.code === 45 || s.code === 48)) return 'fog';
+  if (feels.length && Math.min(...feels) <= 0) return 'cold';
+  if (feels.length && Math.max(...feels) >= 28) return 'hot';
+  return any((s) => s.code >= 3) ? 'cloudy' : 'clear';
+}
+const QUOTES = {
+  snow: ['눈길엔 천천히 가는 사람이 제일 빨리 도착해요.', '하얀 길 위에서는 한 박자 느려도 괜찮아요.', '오늘은 5분 일찍, 마음은 10분 여유롭게.'],
+  rain: ['비 오는 날엔 우산 하나만큼만 느긋해져도 좋아요.', '빗소리를 배경음악 삼아, 오늘도 차분하게.', '젖은 길은 조심히, 마음은 보송하게.'],
+  dust: ['하늘은 뿌옇지만 오늘 할 일은 또렷하게.', '마스크 뒤에서도 웃는 얼굴은 티가 나요.', '먼지 많은 날엔 물 한 잔 더 챙겨요.'],
+  fog: ['앞이 흐릴 땐 가까운 것부터 하나씩.', '안개는 곧 걷혀요. 서두르지 말아요.', '천천히 가도 길은 그대로 있어요.'],
+  cold: ['추운 아침일수록 따뜻한 한 잔이 큰 힘이 돼요.', '옷깃은 여미고, 어깨는 펴고.', '찬 공기에 정신이 번쩍, 오늘도 힘내요.'],
+  hot: ['더운 날엔 무리하지 않는 것도 실력이에요.', '시원한 물 한 병이 오늘의 든든한 동료예요.', '그늘 따라 천천히, 오늘도 무사히.'],
+  clear: ['하늘이 맑으니 오늘은 좋은 일이 하나쯤 생길 거예요.', '햇살 좋은 날, 창문 한 번 열고 시작해요.', '맑은 하늘만큼 가벼운 하루 되세요.'],
+  cloudy: ['흐린 날엔 내가 먼저 밝아지면 돼요.', '구름 뒤에도 해는 그대로 있어요.', '잔잔한 날씨, 차분하게 집중하기 좋은 날이에요.'],
+};
+const LUNCH = {
+  snow: ['순대국', '부대찌개', '설렁탕', '만둣국'], rain: ['칼국수', '파전', '짬뽕', '수제비'],
+  dust: ['비빔밥', '미역국 정식', '샤브샤브', '쌀국수'], fog: ['김치찌개', '우동', '된장찌개', '카레'],
+  cold: ['김치찌개', '순두부찌개', '갈비탕', '라멘'], hot: ['냉면', '콩국수', '메밀소바', '초계국수'],
+  clear: ['돈가스', '비빔밥', '샌드위치', '쌀국수'], cloudy: ['제육볶음', '우동', '카레', '김치볶음밥'],
+};
+const MUSIC = {
+  snow: ['포근한 겨울 노래', '눈 오는 날 출근길 플레이리스트'], rain: ['잔잔한 재즈·어쿠스틱', '비 오는 날 출근길 플레이리스트'],
+  dust: ['기분 전환용 신나는 노래', '기분 전환 출근길 플레이리스트'], fog: ['차분한 로파이·연주곡', '안개 낀 아침 로파이 플레이리스트'],
+  cold: ['따뜻한 발라드·R&B', '추운 날 출근길 따뜻한 플레이리스트'], hot: ['시원한 여름 댄스곡', '더운 날 출근길 시원한 플레이리스트'],
+  clear: ['신나는 팝·시티팝', '맑은 날 출근길 신나는 플레이리스트'], cloudy: ['차분한 인디·로파이', '흐린 날 출근길 인디 플레이리스트'],
+};
+
+// 앞으로 3일 동안 비/눈이 언제 오는지 보고 세차하기 좋은지 알려준다
+function carWash(cp, worstPm) {
+  const H = cp.wx.hourly, i0 = H.findIndex((h) => h.time === kstKey(new Date()));
+  if (i0 < 0) return null;
+  const span = H.slice(i0, i0 + 72);
+  const k = span.findIndex((h) => (h.precip ?? 0) >= 0.2 || (h.pop ?? 0) >= 60 || h.code >= 51);
+  if (k < 0) return worstPm >= 2 ? '🙂 <b>보통</b> · 3일간 비는 없지만 미세먼지가 나빠요' : '😆 <b>세차하기 좋아요</b> · 3일간 비·눈 소식 없음';
+  const dd = Math.round((Date.parse(span[k].time.slice(0, 10)) - Date.parse(span[0].time.slice(0, 10))) / 86400e3);
+  const when = `${['오늘', '내일', '모레', '글피'][dd] ?? dd + '일 뒤'} ${+span[k].time.slice(11, 13)}시쯤`;
+  if (k === 0) return '🙅 <b>미루세요</b> · 지금 비·눈이 와요';
+  return k < 24 ? `🙅 <b>미루세요</b> · ${when} 비·눈 예보` : k < 48 ? `🤔 <b>추천하지 않아요</b> · ${when} 비·눈 예보` : `🙂 <b>보통</b> · ${when}부터 비·눈 예보`;
+}
+
+function buildExtras(cps, snaps, worstPm, depart) {
+  const back = state.trip === 'back', key = kstKey(depart);
+  const seed = +key.slice(5, 7) * 31 + +key.slice(8, 10);
+  const mood = moodOf(snaps, worstPm);
+  // 점심: 회사(출근 때는 도착지, 퇴근 때는 출발지)의 낮 12시 예보 기준. 오후에 조회하면 다음 날 점심.
+  const office = back ? cps[0] : cps[cps.length - 1], home = back ? cps[cps.length - 1] : cps[0];
+  const late = +key.slice(11, 13) >= 13, noon = new Date(depart.getTime() + (late ? 86400e3 : 0));
+  const h12 = office.wx.hourly.find((h) => h.time === kstKey(noon).slice(0, 10) + 'T12:00');
+  const lm = h12 ? moodOf([h12], pmOverall(h12) ?? 0) : mood, menu = LUNCH[lm];
+  const lunch = `<b>${menu[seed % 4]}</b> 또는 <b>${menu[(seed + 1) % 4]}</b>${h12 ? ` <small>(${late ? '내일 ' : ''}낮 ${r0(h12.temp)}° ${wInfo(h12.code, 1)[1]})</small>` : ''}`;
+  const [genre, q0] = MUSIC[mood], q = back ? q0.replace('출근길', '퇴근길') : q0;
+  const music = `<b>${genre}</b><br><a href="https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=EgIQAw%3D%3D" target="_blank" rel="noopener">▶ 유튜브 추천 플레이리스트</a>
+    · <a href="https://music.youtube.com/search?q=${encodeURIComponent(q)}" target="_blank" rel="noopener">🎵 유튜브 뮤직</a>`;
+  const rows = [['💬', '한마디', esc(QUOTES[mood][seed % 3])], ['🍱', late ? '내일 점심' : '점심 메뉴', lunch], ['🎧', '음악', music]];
+  const wash = carWash(home, worstPm);
+  if (wash) rows.push(['🚿', '세차 지수', wash]);
+  return `<h3>🎁 오늘의 덤</h3>` + rows.map(([e, l, v]) => `<div class="insight"><span>${e}</span><span class="l">${l}</span><span>${v}</span></div>`).join('');
+}
+
+// 구글 캘린더 "일정 만들기" 화면을 내용이 채워진 채로 여는 주소 (로그인·연동 설정 없이 동작)
+function calendarLink(route, depart, lines, wetKind) {
+  const f = (d) => {
+    const p = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d);
+    const g = (t) => p.find((x) => x.type === t).value;
+    return `${g('year')}${g('month')}${g('day')}T${g('hour')}${g('minute')}00`;
+  };
+  const end = new Date(depart.getTime() + Math.max(route.duration, 600) * 1000);
+  const title = `${wetKind ? '☂️ 우산 챙기기 · ' : ''}${state.trip === 'back' ? '퇴근' : '출근'} ${state.from.name} → ${state.to.name}`;
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: title, dates: `${f(depart)}/${f(end)}`, ctz: TZ, details: lines.join('\n'), location: state.from.name });
+  return 'https://calendar.google.com/calendar/render?' + q.toString();
+}
+
+function renderRoute(route, depart) {
+  const cps = state.checkpoints;
+  state.depart = depart; state.routeDur = route.duration;
+  state.routeMarkers.filter((m) => m._cp).forEach((m) => m.remove());
+  cps.forEach((cp) => {
+    const pin = makePin(cp, snapshot(cp.wx, cp.when), { time: hm(cp.when), onClick: () => showDetail(cp, 'result') });
+    pin.marker._cp = true; cp.el = pin.el; state.routeMarkers.push(pin.marker);
+  });
+
+  const snaps = cps.map((cp) => snapshot(cp.wx, cp.when));
+  const worstPm = Math.max(...snaps.map((s) => pmOverall(s) ?? 0));
+  const temps = snaps.map((s) => s.feels ?? s.temp);
+  const wetKind = snaps.some((s) => isSnow(s.code)) ? 'snow' : snaps.some((s) => isWet(s.code) || (s.pop ?? 0) >= 50) ? 'rain' : null;
+  const tips = [];
+  if (snaps.some((s) => isSnow(s.code))) tips.push('❄️ 눈길 조심! 일찍 출발하세요');
+  else if (snaps.some((s) => isWet(s.code) || (s.pop ?? 0) >= 50)) tips.push('☂️ 우산 챙기세요');
+  if (worstPm >= 2) tips.push('😷 마스크 꼭 쓰세요');
+  if (Math.min(...temps) <= 0) tips.push('🧣 따뜻하게 입으세요');
+  else if (Math.max(...temps) >= 30) tips.push('🥤 더워요, 물 챙기세요');
+  if (snaps.some((s) => s.code === 45 || s.code === 48)) tips.push('🌫️ 안개, 안전운전');
+  if (!tips.length) tips.push('😎 쾌적한 출근길이에요!');
+
+  const mins = Math.round(route.duration / 60);
+  const tmin = r0(Math.min(...snaps.map((s) => s.temp))), tmax = r0(Math.max(...snaps.map((s) => s.temp)));
+  const calLines = [`${hm(depart)} 출발 · ${(route.distance / 1000).toFixed(1)}km · 약 ${mins}분`, `기온 ${tmin}° ~ ${tmax}° · 미세먼지 최대 ${PM_META[worstPm].label}`,
+    ...tips.map((t) => t), '(출근길 하늘에서 만든 일정)'];
+  if (wetKind) toast(wetKind === 'snow' ? '❄️ 눈 소식이 있어요. 우산 챙기고 일찍 출발하세요!' : '☂️ 비 소식이 있어요. 우산 챙기세요!', 5000);
+  document.title = (wetKind === 'snow' ? '❄️ ' : wetKind === 'rain' ? '☂️ ' : '') + '출근길 하늘';
+  $('#summary').innerHTML = `${wetKind === 'snow' ? '<div class="alert snow">❄️ 눈 소식이 있어요! 우산을 챙기고 미끄럼에 주의하세요.</div>' : wetKind === 'rain' ? '<div class="alert">☂️ 비 소식이 있어요! 우산을 꼭 챙기세요.</div>' : ''}
+    <div class="row"><span>${state.trip === 'back' ? '🌙 퇴근길 · ' : ''}${esc(state.from.name)} → ${esc(state.to.name)}</span><span>${hm(depart)} 출발</span></div>
+    <div class="big">${(route.distance / 1000).toFixed(1)}km · 약 ${mins >= 60 ? Math.floor(mins / 60) + '시간 ' : ''}${mins % 60}분${route.approx ? ' (직선 추정)' : ''}</div>
+    <div class="countdown" id="countdown"></div>
+    <div class="row"><span>기온 ${r0(Math.min(...snaps.map((s) => s.temp)))}° ~ ${r0(Math.max(...snaps.map((s) => s.temp)))}°</span>
+      <span>미세먼지 최대 <b style="color:${PM_META[worstPm].color}">${PM_META[worstPm].label}</b></span></div>
+    <div class="tips">${tips.map((t) => `<span class="tip">${t}</span>`).join('')}</div>
+    <div class="insights">${buildInsights(cps, snaps, depart)}</div>
+    <button class="map-link" data-go="map">🗺️ 지도에서 동선 보기</button>
+    <a class="cal-btn" target="_blank" rel="noopener" href="${esc(calendarLink(route, depart, calLines, wetKind))}">📅 구글 캘린더에 출발 일정 넣기</a>`;
+
+  updateCountdown();
+  $('#extras').innerHTML = buildExtras(cps, snaps, worstPm, depart);
+  document.body.classList.add('has-route');
+
+  const list = $('#cpList'); list.innerHTML = '';
+  cps.forEach((cp, i) => {
+    const s = snaps[i], li = document.createElement('li');
+    li.className = 'cp';
+    li.innerHTML = `<span class="time">${hm(cp.when)}</span><span class="w">${wInfo(s.code, s.isDay)[0]}</span>
+      <span class="name">${esc(cp.label)} <small style="color:var(--muted)">${cp.role}</small></span>
+      <span class="t">${r0(s.temp)}°</span>${pmBadge(pmOverall(s))}`;
+    li.addEventListener('click', () => showDetail(cp, 'result'));
+    list.appendChild(li);
+  });
+  show('result');
+  if (isMobile() && document.body.dataset.tab === 'route') $('#resultView').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// 경유 지점 이름을 행정구역명으로 바꿔준다 (Nominatim 정책상 1초에 1건)
+async function labelCheckpoints(token) {
+  const cps = state.checkpoints;
+  for (let i = 1; i < cps.length - 1; i++) {
+    try {
+      const name = await reverseLabel(cps[i]);
+      if (token !== state.routeToken) return;
+      if (name) {
+        cps[i].label = name;
+        cps[i].el.querySelector('.emo-name').textContent = name;
+        const row = $('#cpList').children[i]?.querySelector('.name');
+        if (row) row.firstChild.textContent = name + ' ';
+      }
+    } catch (e) { return; }
+    await sleep(1100);
+  }
+}
+
+/* ------------------------------------------------------------------ 상세 화면 */
+function show(view) { document.body.dataset.view = view; } // 어떤 화면을 보일지는 CSS 가 정한다
+
+// 휴대폰: 아래 탭으로 화면 전환
+const isMobile = () => window.matchMedia('(max-width: 860px)').matches;
+const TAB_TITLES = { route: '출근길', life: '생활', nation: '전국 날씨' };
+const LIFE_EMPTY = '<h3>🎁 오늘의 덤</h3><p class="hint">출근길 탭에서 경로를 조회하면 오늘의 한마디, 점심 메뉴, 음악, 세차 지수를 알려드려요.</p>';
+function setTab(t) {
+  if (document.body.dataset.view === 'detail') { // 열려 있던 상세 화면은 닫는다
+    document.querySelectorAll('.emo-pin.active').forEach((e) => e.classList.remove('active'));
+    show(state.backTo); state.detailP = null;
+  }
+  document.body.dataset.tab = t;
+  document.querySelectorAll('.tabbar [data-go]').forEach((b) => b.classList.toggle('active', b.dataset.go === t));
+  if (TAB_TITLES[t]) $('#navTitle').textContent = TAB_TITLES[t];
+  window.scrollTo(0, 0);
+  if (t === 'map') state.map?.resize();
+}
+
+function showDetail(p, backTo) {
+  state.backTo = backTo; state.detailP = p;
+  if (!p.role) p.when = new Date(); // 전국 도시는 항상 "지금" 기준
+  document.querySelectorAll('.emo-pin.active').forEach((e) => e.classList.remove('active'));
+  p.el?.classList.add('active');
+  state.map.easeTo({ center: [p.lon, p.lat], zoom: Math.max(state.map.getZoom(), backTo === 'intro' ? 8.5 : 12), duration: 900 });
+  renderDetail(p, null);
+  show('detail');
+  if (isMobile()) $('#detailView').scrollTop = 0;
+  else $('.panel').scrollTo({ top: $('#detailView').offsetTop - 12, behavior: 'smooth' });
+}
+
+// hourTime 을 주면 그 시각 예보로 위쪽 카드를 바꿔 보여준다 (시간별 예보 카드를 눌렀을 때)
+function renderDetail(p, hourTime) {
+  const base = snapshot(p.wx, p.when);
+  const picked = hourTime ? p.wx.hourly.find((h) => h.time === hourTime) : null;
+  const s = picked ? { ...picked, forecast: true } : base;
+  const selTime = picked ? picked.time : p.wx.hourly[base.idx]?.time;
+  const [emo, desc] = wInfo(s.code, s.isDay);
+  const today = kstKey(new Date()).slice(0, 10);
+  const dayOf = (t) => ({ '-1': '어제', 0: '오늘', 1: '내일', 2: '모레', 3: '글피' }[Math.round((Date.parse(t.slice(0, 10)) - Date.parse(today)) / 86400e3)] ?? '');
+  const sub = picked ? `${dayOf(picked.time)} ${+picked.time.slice(11, 13)}시 예보 기준`
+    : `${p.role ? `${hm(p.when)} ${p.role} 예정 · ` : ''}${s.forecast ? '예보' : '현재'} 기준`;
+  const pmRow = (lbl, kind, v) => {
+    const lvl = pmLevel(kind, v);
+    if (lvl == null) return `<div class="pm-row"><span class="lbl">${lbl}</span><div class="bar"></div><span class="grade">정보 없음</span></div>`;
+    const pct = Math.min(100, (v / (PM_STEPS[kind][2] * 1.2)) * 100);
+    return `<div class="pm-row"><span class="lbl">${lbl}</span>
+      <div class="bar"><i style="width:${pct}%;background:${PM_META[lvl].color}"></i></div>
+      <span class="grade pm${lvl}">${PM_META[lvl].face} ${r0(v)}㎍ · ${PM_META[lvl].label}</span></div>`;
+  };
+  const hours = p.wx.hourly.slice(base.idx, base.idx + 24).map((h, i) => `
+    <div class="hour ${h.time === selTime ? 'now' : ''}" data-time="${h.time}" title="눌러서 이 시각 자세히 보기">
+      <div class="h">${i > 0 && h.time.endsWith('T00:00') ? `<span class="d">${dayOf(h.time)}</span> ` : ''}${+h.time.slice(11, 13)}시</div>
+      <div class="w">${wInfo(h.code, h.isDay)[0]}</div>
+      <div class="t">${r0(h.temp)}°</div>
+      <div class="p">☔ ${r0(h.pop)}%</div>
+      ${pmBadge(pmOverall(h))}
+    </div>`).join('');
+  // 다른 지점으로 바로 건너가기
+  const list = state.backTo === 'result' ? state.checkpoints : state.cities;
+  const sw = list.length > 1 ? `<div class="switch">${list.map((x, i) => {
+    const xs = snapshot(x.wx, x.role ? x.when : new Date());
+    return `<button class="sw ${x === p ? 'active' : ''}" data-sw="${i}">${x.role ? hm(x.when) + ' ' : ''}${wInfo(xs.code, xs.isDay)[0]} ${esc(x.label)}</button>`;
+  }).join('')}</div>` : '';
+
+  $('#detail').innerHTML = `${sw}
+    <div class="card detail-head">
+      <div class="place">📍 ${esc(p.label)}</div>
+      <div class="sub">${sub}</div>
+      <div class="hero">${emo}</div>
+      <div class="temp">${r0(s.temp)}°</div>
+      <div class="desc">${desc} · 체감 ${r0(s.feels)}°</div>
+      <div class="stats">
+        <div class="stat">💧 습도<b>${r0(s.hum)}%</b></div>
+        <div class="stat">🌬️ 바람<b>${s.wind == null ? '-' : s.wind.toFixed(1)}m/s</b></div>
+        <div class="stat">🌧️ 강수량<b>${s.precip == null ? '-' : s.precip.toFixed(1)}mm</b></div>
+        <div class="stat">☔ 강수확률<b>${r0(s.pop)}%</b></div>
+      </div>
+    </div>
+    <div class="card pm-card">
+      <h3 style="margin:0 0 4px">😷 미세먼지</h3>
+      ${pmRow('미세', 'pm10', s.pm10)}${pmRow('초미세', 'pm25', s.pm25)}
+    </div>
+    <h2 class="sec-title" style="margin-top:14px">🕐 시간별 예보 <small>눌러서 그 시각 자세히 보기</small></h2>
+    <div class="hourly">${hours}</div>`;
+  $('#detail .switch .active')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+
+// 상세 화면 안에서의 클릭: 시간 카드 / 지점 바꾸기
+function onDetailClick(e) {
+  const p = state.detailP;
+  if (!p) return;
+  const hour = e.target.closest('.hour'), sw = e.target.closest('[data-sw]');
+  if (hour) {
+    const left = $('#detail .hourly').scrollLeft;
+    renderDetail(p, hour.dataset.time);
+    $('#detail .hourly').scrollLeft = left; // 가로 스크롤 위치 유지
+  } else if (sw) {
+    const next = (state.backTo === 'result' ? state.checkpoints : state.cities)[+sw.dataset.sw];
+    if (next && next !== p) showDetail(next, state.backTo);
+  }
+}
+
+/* ------------------------------------------------------------------ 검색 입력 */
+function setupField(key) {
+  const input = $(`#${key}Input`), box = $(`#${key}Suggest`);
+  let seq = 0, timer = 0;
+  const pick = (p) => { seq++; clearTimeout(timer); state[key] = p; input.value = p.name; box.hidden = true; setPickMarker(key, null); };
+  const render = (items, q) => {
+    box.innerHTML = '';
+    items.forEach((p) => {
+      const li = document.createElement('li');
+      li.innerHTML = `${esc(p.name)}${p.sub ? `<small>${esc(p.sub)}</small>` : ''}`;
+      li.addEventListener('mousedown', (e) => { e.preventDefault(); pick(p); });
+      box.appendChild(li);
+    });
+    if (q) {
+      const li = document.createElement('li');
+      li.innerHTML = `🔎 <b>${esc(q)}</b> 주소로 자세히 검색 <small>Enter</small>`;
+      li.addEventListener('mousedown', (e) => { e.preventDefault(); online(q); });
+      box.appendChild(li);
+    }
+    box.hidden = !box.children.length;
+  };
+  // Enter: 상세 주소까지 꼼꼼히 검색
+  const online = async (q) => {
+    const my = ++seq; clearTimeout(timer);
+    box.innerHTML = '<li>🔎 찾는 중…</li>'; box.hidden = false;
+    const rows = await searchPlaces(q).catch(() => []);
+    if (my !== seq) return;
+    if (!rows.length) { box.innerHTML = '<li>검색 결과가 없어요 🥲<small>🗺️ 버튼을 눌러 지도에서 직접 골라 보세요</small></li>'; return; }
+    render(rows);
+  };
+  // 입력 중: 자주 쓰는 장소 즉시 + 잠시 멈추면 온라인 자동완성
+  const suggest = () => {
+    const q = input.value.trim(), my = ++seq;
+    const pres = PRESETS.filter((p) => !q || p.name.includes(q)).slice(0, q ? 3 : 6);
+    render(pres, q);
+    clearTimeout(timer);
+    if (q.length < 2) return;
+    timer = setTimeout(async () => {
+      const rows = await photon(cleanAddr(q) || q).catch(() => []);
+      if (my !== seq || document.activeElement !== input || !rows.length) return;
+      render([...pres, ...rows.filter((r) => !pres.some((p) => p.name === r.name)).slice(0, 6)], q);
+    }, 400);
+  };
+  input.addEventListener('input', () => { state[key] = null; setPickMarker(key, null); suggest(); });
+  input.addEventListener('focus', suggest);
+  input.addEventListener('blur', () => setTimeout(() => (box.hidden = true), 150));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { seq++; clearTimeout(timer); box.hidden = true; return; }
+    if (e.key !== 'Enter' || e.isComposing) return;
+    const q = input.value.trim(); if (!q) return;
+    const exact = PRESETS.find((p) => p.name === q);
+    exact ? pick(exact) : online(q);
+  });
+}
+
+/* ------------------------------------------------------------------ 즐겨찾기 / 퇴근길 */
+const FAV_KEY = 'commuteSky.favs';
+function loadFavs() {
+  try { const v = JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+}
+function saveFavs(list) {
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
+}
+function renderFavs() {
+  const box = $('#favs'), list = loadFavs();
+  box.innerHTML = ''; box.hidden = !list.length;
+  list.forEach((f, i) => {
+    const el = document.createElement('span'); el.className = 'fav';
+    el.innerHTML = `<button class="fav-go" title="이 경로 보기">⭐ ${esc(f.from.name)} → ${esc(f.to.name)}</button><button class="fav-del" title="삭제">✕</button>`;
+    el.querySelector('.fav-go').addEventListener('click', () => applyFav(f));
+    el.querySelector('.fav-del').addEventListener('click', () => { const l = loadFavs(); l.splice(i, 1); saveFavs(l); renderFavs(); });
+    box.appendChild(el);
+  });
+}
+function applyFav(f) {
+  setTrip('go'); setDepart('now');
+  state.from = { ...f.from }; state.to = { ...f.to };
+  $('#fromInput').value = f.from.name; $('#toInput').value = f.to.name;
+  setPickMarker('from', null); setPickMarker('to', null);
+  findRoute();
+}
+function saveFav() {
+  const r = state.lastRoute;
+  if (!r) return toast('먼저 "출근길 날씨 보기"로 경로를 확인해 주세요 ⭐', 3500);
+  const slim = (p) => ({ name: p.name, lat: p.lat, lon: p.lon });
+  const [from, to] = state.trip === 'back' ? [slim(r.to), slim(r.from)] : [slim(r.from), slim(r.to)]; // 항상 출근 방향으로 저장
+  const list = loadFavs();
+  if (list.some((f) => f.from.name === from.name && f.to.name === to.name)) return toast('이미 저장된 경로예요 ⭐');
+  if (list.length >= 5) return toast('즐겨찾기는 5개까지 저장할 수 있어요');
+  list.push({ from, to });
+  toast(saveFavs(list) ? '저장했어요 ⭐ 위쪽 버튼을 누르면 바로 볼 수 있어요' : '이 브라우저에서는 저장할 수 없어요 🥲', 3500);
+  renderFavs();
+}
+function setTrip(t) {
+  state.trip = t;
+  $('#returnBtn').textContent = t === 'back' ? '🌅 출근길로 돌아가기' : '🌙 퇴근길 보기';
+}
+function setDepart(mode, time) {
+  document.querySelectorAll('.chip[data-depart]').forEach((x) => x.classList.toggle('active', x.dataset.depart === mode));
+  $('#departTime').hidden = mode === 'now';
+  if (time) $('#departTime').value = time;
+}
+function toggleReturn() {
+  if (!$('#fromInput').value.trim() || !$('#toInput').value.trim()) return toast('출발지와 도착지를 먼저 입력해 주세요');
+  $('#swapBtn').click(); // 출발 ↔ 도착 뒤집기
+  if (state.trip === 'back') { setTrip('go'); setDepart('now'); } else { setTrip('back'); setDepart('time', '18:00'); }
+  findRoute();
+}
+
+function setupUI() {
+  setupField('from'); setupField('to');
+  $('#goBtn').addEventListener('click', findRoute);
+  $('#returnBtn').addEventListener('click', toggleReturn);
+  $('#favSaveBtn').addEventListener('click', saveFav);
+  $('#detail').addEventListener('click', onDetailClick);
+  $('#extras').innerHTML = LIFE_EMPTY;
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) setTab(b.dataset.go); });
+  setInterval(updateCountdown, 20000);
+  renderFavs();
+  $('#homeBtn').addEventListener('click', goHome);
+  $('#backBtn').addEventListener('click', () => {
+    document.querySelectorAll('.emo-pin.active').forEach((e) => e.classList.remove('active'));
+    show(state.backTo); state.detailP = null;
+    // 지도도 원래 보던 범위로 되돌린다 (다른 지점을 다시 누를 수 있게)
+    if (state.backTo === 'result' && state.routeBounds) state.map.fitBounds(state.routeBounds, { ...ROUTE_FIT, duration: 1000 });
+    else if (state.backTo === 'intro') state.map.fitBounds(KOREA_BOUNDS, { ...HOME_FIT, duration: 1000 });
+  });
+  $('#swapBtn').addEventListener('click', () => {
+    [state.from, state.to] = [state.to, state.from];
+    const a = $('#fromInput'), b = $('#toInput'); [a.value, b.value] = [b.value, a.value];
+    setPickMarker('from', null); setPickMarker('to', null);
+  });
+  document.querySelectorAll('.chip[data-depart]').forEach((c) => c.addEventListener('click', () => setDepart(c.dataset.depart)));
+  document.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
+    state.picking = b.dataset.pick; state.map.getCanvas().style.cursor = 'crosshair';
+    toast(`지도에서 ${b.dataset.pick === 'from' ? '출발지' : '도착지'} 위치를 눌러 주세요 👆`, 4000);
+    if (isMobile()) setTab('map');
+  }));
+  $('#geoBtn').addEventListener('click', () => {
+    if (!navigator.geolocation) return toast('이 브라우저는 위치 기능을 지원하지 않아요');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { state.from = { name: '현재 위치', lat: pos.coords.latitude, lon: pos.coords.longitude }; $('#fromInput').value = '현재 위치'; setPickMarker('from', null); },
+      () => toast('위치 권한을 허용해 주세요 📍'), { timeout: 8000 });
+  });
+}
+
+setupUI();
+initMap();
+</script>
+</body>
+</html>
